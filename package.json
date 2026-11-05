@@ -1,0 +1,30 @@
+{
+  "name": "gina-tricot-3d-store",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Interaktiv 3D-butik med AR-provning (prototyp)",
+  "scripts": {
+    "dev": "vite",
+    "dev:https": "HTTPS=1 vite --host",
+    "build": "vite build",
+    "preview": "vite preview",
+    "placeholders": "python3 scripts/generate_placeholders.py",
+    "fetch-model": "node scripts/fetch-pose-model.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.1.0",
+    "@mediapipe/tasks-vision": "^0.10.21",
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.170.0",
+    "zustand": "^4.5.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^1.2.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^5.4.21"
+  }
+}

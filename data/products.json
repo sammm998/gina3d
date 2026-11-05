@@ -1,0 +1,671 @@
+[
+  {
+    "id": "gt-001",
+    "name": "Basic t-shirt",
+    "price": 149.95,
+    "currency": "SEK",
+    "category": "tops",
+    "colors": [
+      "Vit",
+      "Svart",
+      "Gråmelerad"
+    ],
+    "sizes": [
+      "XS",
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "images": [
+      "/assets/products/gt-001-1.webp",
+      "/assets/products/gt-001-2.webp"
+    ],
+    "tryOnImage": "/assets/products/gt-001-tryon.png",
+    "productUrl": "https://www.ginatricot.com/se",
+    "tryOnAnchors": {
+      "left": [
+        0.3,
+        0.13
+      ],
+      "right": [
+        0.7,
+        0.13
+      ],
+      "bottomY": 0.8
+    }
+  },
+  {
+    "id": "gt-002",
+    "name": "Satinblus",
+    "price": 399.95,
+    "currency": "SEK",
+    "category": "tops",
+    "colors": [
+      "Champagne",
+      "Svart"
+    ],
+    "sizes": [
+      "XS",
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "images": [
+      "/assets/products/gt-002-1.webp",
+      "/assets/products/gt-002-2.webp"
+    ],
+    "tryOnImage": "/assets/products/gt-002-tryon.png",
+    "productUrl": "https://www.ginatricot.com/se",
+    "tryOnAnchors": {
+      "left": [
+        0.3,
+        0.13
+      ],
+      "right": [
+        0.7,
+        0.13
+      ],
+      "bottomY": 0.8
+    }
+  },
+  {
+    "id": "gt-003",
+    "name": "Stickad tröja",
+    "price": 349.95,
+    "currency": "SEK",
+    "category": "tops",
+    "colors": [
+      "Beige",
+      "Offwhite",
+      "Brun"
+    ],
+    "sizes": [
+      "XS",
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "images": [
+      "/assets/products/gt-003-1.webp",
+      "/assets/products/gt-003-2.webp"
+    ],
+    "tryOnImage": "/assets/products/gt-003-tryon.png",
+    "productUrl": "https://www.ginatricot.com/se",
+    "tryOnAnchors": {
+      "left": [
+        0.3,
+        0.13
+      ],
+      "right": [
+        0.7,
+        0.13
+      ],
+      "bottomY": 0.8
+    }
+  },
+  {
+    "id": "gt-004",
+    "name": "Randig långärmad topp",
+    "price": 199.95,
+    "currency": "SEK",
+    "category": "tops",
+    "colors": [
+      "Offwhite",
+      "Marinblå"
+    ],
+    "sizes": [
+      "XS",
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "images": [
+      "/assets/products/gt-004-1.webp",
+      "/assets/products/gt-004-2.webp"
+    ],
+    "tryOnImage": "/assets/products/gt-004-tryon.png",
+    "productUrl": "https://www.ginatricot.com/se",
+    "tryOnAnchors": {
+      "left": [
+        0.3,
+        0.13
+      ],
+      "right": [
+        0.7,
+        0.13
+      ],
+      "bottomY": 0.8
+    }
+  },
+  {
+    "id": "gt-005",
+    "name": "Straight jeans",
+    "price": 499.95,
+    "currency": "SEK",
+    "category": "jeans",
+    "colors": [
+      "Mellanblå",
+      "Svart"
+    ],
+    "sizes": [
+      "32",
+      "34",
+      "36",
+      "38",
+      "40",
+      "42",
+      "44"
+    ],
+    "images": [
+      "/assets/products/gt-005-1.webp",
+      "/assets/products/gt-005-2.webp"
+    ],
+    "tryOnImage": "/assets/products/gt-005-tryon.png",
+    "productUrl": "https://www.ginatricot.com/se",
+    "tryOnAnchors": {
+      "left": [
+        0.33,
+        0.14
+      ],
+      "right": [
+        0.67,
+        0.14
+      ],
+      "bottomY": 0.56
+    }
+  },
+  {
+    "id": "gt-006",
+    "name": "Wide leg jeans",
+    "price": 549.95,
+    "currency": "SEK",
+    "category": "jeans",
+    "colors": [
+      "Ljus denim",
+      "Mellanblå"
+    ],
+    "sizes": [
+      "32",
+      "34",
+      "36",
+      "38",
+      "40",
+      "42",
+      "44"
+    ],
+    "images": [
+      "/assets/products/gt-006-1.webp",
+      "/assets/products/gt-006-2.webp"
+    ],
+    "tryOnImage": "/assets/products/gt-006-tryon.png",
+    "productUrl": "https://www.ginatricot.com/se",
+    "tryOnAnchors": {
+      "left": [
+        0.33,
+        0.14
+      ],
+      "right": [
+        0.67,
+        0.14
+      ],
+      "bottomY": 0.56
+    }
+  },
+  {
+    "id": "gt-007",
+    "name": "Bootcut jeans",
+    "price": 499.95,
+    "currency": "SEK",
+    "category": "jeans",
+    "colors": [
+      "Svart",
+      "Mörkblå"
+    ],
+    "sizes": [
+      "32",
+      "34",
+      "36",
+      "38",
+      "40",
+      "42",
+      "44"
+    ],
+    "images": [
+      "/assets/products/gt-007-1.webp",
+      "/assets/products/gt-007-2.webp"
+    ],
+    "tryOnImage": "/assets/products/gt-007-tryon.png",
+    "productUrl": "https://www.ginatricot.com/se",
+    "tryOnAnchors": {
+      "left": [
+        0.33,
+        0.14
+      ],
+      "right": [
+        0.67,
+        0.14
+      ],
+      "bottomY": 0.56
+    }
+  },
+  {
+    "id": "gt-008",
+    "name": "Mom jeans",
+    "price": 449.95,
+    "currency": "SEK",
+    "category": "jeans",
+    "colors": [
+      "Mörkblå",
+      "Ljus denim"
+    ],
+    "sizes": [
+      "32",
+      "34",
+      "36",
+      "38",
+      "40",
+      "42",
+      "44"
+    ],
+    "images": [
+      "/assets/products/gt-008-1.webp",
+      "/assets/products/gt-008-2.webp"
+    ],
+    "tryOnImage": "/assets/products/gt-008-tryon.png",
+    "productUrl": "https://www.ginatricot.com/se",
+    "tryOnAnchors": {
+      "left": [
+        0.33,
+        0.14
+      ],
+      "right": [
+        0.67,
+        0.14
+      ],
+      "bottomY": 0.56
+    }
+  },
+  {
+    "id": "gt-009",
+    "name": "Oversize jeansskjorta",
+    "price": 449.95,
+    "currency": "SEK",
+    "category": "jeans",
+    "colors": [
+      "Ljus denim"
+    ],
+    "sizes": [
+      "XS",
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "images": [
+      "/assets/products/gt-009-1.webp",
+      "/assets/products/gt-009-2.webp"
+    ],
+    "tryOnImage": "/assets/products/gt-009-tryon.png",
+    "productUrl": "https://www.ginatricot.com/se",
+    "tryOnType": "upper",
+    "tryOnAnchors": {
+      "left": [
+        0.3,
+        0.13
+      ],
+      "right": [
+        0.7,
+        0.13
+      ],
+      "bottomY": 0.8
+    }
+  },
+  {
+    "id": "gt-010",
+    "name": "Midiklänning",
+    "price": 499.95,
+    "currency": "SEK",
+    "category": "dresses",
+    "colors": [
+      "Svart",
+      "Smaragd"
+    ],
+    "sizes": [
+      "XS",
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "images": [
+      "/assets/products/gt-010-1.webp",
+      "/assets/products/gt-010-2.webp"
+    ],
+    "tryOnImage": "/assets/products/gt-010-tryon.png",
+    "productUrl": "https://www.ginatricot.com/se",
+    "tryOnAnchors": {
+      "left": [
+        0.36,
+        0.06
+      ],
+      "right": [
+        0.64,
+        0.06
+      ],
+      "bottomY": 0.86
+    }
+  },
+  {
+    "id": "gt-011",
+    "name": "Satinklänning",
+    "price": 599.95,
+    "currency": "SEK",
+    "category": "dresses",
+    "colors": [
+      "Smaragd",
+      "Champagne"
+    ],
+    "sizes": [
+      "XS",
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "images": [
+      "/assets/products/gt-011-1.webp",
+      "/assets/products/gt-011-2.webp"
+    ],
+    "tryOnImage": "/assets/products/gt-011-tryon.png",
+    "productUrl": "https://www.ginatricot.com/se",
+    "tryOnAnchors": {
+      "left": [
+        0.36,
+        0.06
+      ],
+      "right": [
+        0.64,
+        0.06
+      ],
+      "bottomY": 0.86
+    }
+  },
+  {
+    "id": "gt-012",
+    "name": "Blommig maxiklänning",
+    "price": 549.95,
+    "currency": "SEK",
+    "category": "dresses",
+    "colors": [
+      "Offwhite",
+      "Rosa"
+    ],
+    "sizes": [
+      "XS",
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "images": [
+      "/assets/products/gt-012-1.webp",
+      "/assets/products/gt-012-2.webp"
+    ],
+    "tryOnImage": "/assets/products/gt-012-tryon.png",
+    "productUrl": "https://www.ginatricot.com/se",
+    "tryOnAnchors": {
+      "left": [
+        0.36,
+        0.06
+      ],
+      "right": [
+        0.64,
+        0.06
+      ],
+      "bottomY": 0.8
+    }
+  },
+  {
+    "id": "gt-013",
+    "name": "Plisserad kjol",
+    "price": 399.95,
+    "currency": "SEK",
+    "category": "skirts",
+    "colors": [
+      "Kamel",
+      "Svart"
+    ],
+    "sizes": [
+      "XS",
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "images": [
+      "/assets/products/gt-013-1.webp",
+      "/assets/products/gt-013-2.webp"
+    ],
+    "tryOnImage": "/assets/products/gt-013-tryon.png",
+    "productUrl": "https://www.ginatricot.com/se",
+    "tryOnAnchors": {
+      "left": [
+        0.33,
+        0.12
+      ],
+      "right": [
+        0.67,
+        0.12
+      ],
+      "bottomY": 0.62
+    }
+  },
+  {
+    "id": "gt-014",
+    "name": "Trenchcoat",
+    "price": 899.95,
+    "currency": "SEK",
+    "category": "outerwear",
+    "colors": [
+      "Beige",
+      "Svart"
+    ],
+    "sizes": [
+      "XS",
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "images": [
+      "/assets/products/gt-014-1.webp",
+      "/assets/products/gt-014-2.webp"
+    ],
+    "tryOnImage": "/assets/products/gt-014-tryon.png",
+    "productUrl": "https://www.ginatricot.com/se",
+    "tryOnAnchors": {
+      "left": [
+        0.3,
+        0.12
+      ],
+      "right": [
+        0.7,
+        0.12
+      ],
+      "bottomY": 0.62
+    }
+  },
+  {
+    "id": "gt-015",
+    "name": "Ullkappa",
+    "price": 999.95,
+    "currency": "SEK",
+    "category": "outerwear",
+    "colors": [
+      "Kamel",
+      "Grå"
+    ],
+    "sizes": [
+      "XS",
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "images": [
+      "/assets/products/gt-015-1.webp",
+      "/assets/products/gt-015-2.webp"
+    ],
+    "tryOnImage": "/assets/products/gt-015-tryon.png",
+    "productUrl": "https://www.ginatricot.com/se",
+    "tryOnAnchors": {
+      "left": [
+        0.3,
+        0.12
+      ],
+      "right": [
+        0.7,
+        0.12
+      ],
+      "bottomY": 0.62
+    }
+  },
+  {
+    "id": "gt-016",
+    "name": "Pufferjacka",
+    "price": 799.95,
+    "currency": "SEK",
+    "category": "outerwear",
+    "colors": [
+      "Svart",
+      "Oliv"
+    ],
+    "sizes": [
+      "XS",
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "images": [
+      "/assets/products/gt-016-1.webp",
+      "/assets/products/gt-016-2.webp"
+    ],
+    "tryOnImage": "/assets/products/gt-016-tryon.png",
+    "productUrl": "https://www.ginatricot.com/se",
+    "tryOnAnchors": {
+      "left": [
+        0.3,
+        0.12
+      ],
+      "right": [
+        0.7,
+        0.12
+      ],
+      "bottomY": 0.66
+    }
+  },
+  {
+    "id": "gt-017",
+    "name": "Jeansjacka",
+    "price": 599.95,
+    "currency": "SEK",
+    "category": "outerwear",
+    "colors": [
+      "Mellanblå"
+    ],
+    "sizes": [
+      "XS",
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "images": [
+      "/assets/products/gt-017-1.webp",
+      "/assets/products/gt-017-2.webp"
+    ],
+    "tryOnImage": "/assets/products/gt-017-tryon.png",
+    "productUrl": "https://www.ginatricot.com/se",
+    "tryOnAnchors": {
+      "left": [
+        0.3,
+        0.12
+      ],
+      "right": [
+        0.7,
+        0.12
+      ],
+      "bottomY": 0.64
+    }
+  },
+  {
+    "id": "gt-018",
+    "name": "Axelremsväska",
+    "price": 299.95,
+    "currency": "SEK",
+    "category": "bags",
+    "colors": [
+      "Svart",
+      "Cognac"
+    ],
+    "sizes": [
+      "One size"
+    ],
+    "images": [
+      "/assets/products/gt-018-1.webp",
+      "/assets/products/gt-018-2.webp"
+    ],
+    "tryOnImage": "/assets/products/gt-018-tryon.png",
+    "productUrl": "https://www.ginatricot.com/se"
+  },
+  {
+    "id": "gt-019",
+    "name": "Shopper i skinnimitation",
+    "price": 349.95,
+    "currency": "SEK",
+    "category": "bags",
+    "colors": [
+      "Cognac",
+      "Svart"
+    ],
+    "sizes": [
+      "One size"
+    ],
+    "images": [
+      "/assets/products/gt-019-1.webp",
+      "/assets/products/gt-019-2.webp"
+    ],
+    "tryOnImage": "/assets/products/gt-019-tryon.png",
+    "productUrl": "https://www.ginatricot.com/se"
+  },
+  {
+    "id": "gt-020",
+    "name": "Loafers",
+    "price": 449.95,
+    "currency": "SEK",
+    "category": "shoes",
+    "colors": [
+      "Svart",
+      "Brun"
+    ],
+    "sizes": [
+      "36",
+      "37",
+      "38",
+      "39",
+      "40",
+      "41"
+    ],
+    "images": [
+      "/assets/products/gt-020-1.webp",
+      "/assets/products/gt-020-2.webp"
+    ],
+    "tryOnImage": "/assets/products/gt-020-tryon.png",
+    "productUrl": "https://www.ginatricot.com/se"
+  }
+]

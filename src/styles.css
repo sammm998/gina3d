@@ -1,0 +1,151 @@
+/* Minimalistiskt gränssnitt: svart, vitt och krämvitt, ren sans-serif och mycket luft. */
+:root {
+  --black: #111111;
+  --ink: #1d1d1d;
+  --muted: #6b6b6b;
+  --line: #e4e1db;
+  --white: #ffffff;
+  --cream: #f5f0e8;
+  --cream-2: #ece5d9;
+  --overlay: rgba(255, 255, 255, 0.92);
+  --font: 'Inter Variable', Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --radius: 2px;
+  --shadow: 0 8px 40px rgba(0, 0, 0, 0.08);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  font-family: var(--font);
+  color: var(--ink);
+  background: var(--white);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+button { font: inherit; color: inherit; }
+img { max-width: 100%; }
+
+.app { position: fixed; inset: 0; }
+.scene-canvas { position: absolute !important; inset: 0; }
+.canvas-grab canvas, canvas.canvas-grab { cursor: grab; }
+.canvas-grabbing { cursor: grabbing !important; }
+.app.is-hovering canvas { cursor: pointer !important; }
+
+/* ---------- knappar */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: 1px solid var(--black); background: var(--white); color: var(--black);
+  padding: 10px 16px; border-radius: var(--radius); cursor: pointer;
+  font-size: 13px; letter-spacing: 0.04em; line-height: 1; white-space: nowrap;
+  transition: background 0.15s, color 0.15s, opacity 0.15s;
+}
+.btn:hover { background: var(--black); color: var(--white); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn:disabled:hover { background: var(--white); color: var(--black); }
+.btn--primary { background: var(--black); color: var(--white); }
+.btn--primary:hover { background: #333; }
+.btn--primary:disabled:hover { background: var(--black); color: var(--white); }
+.btn--large { padding: 16px 32px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.12em; }
+.btn--block { width: 100%; }
+.btn--ghost { background: var(--overlay); border-color: transparent; backdrop-filter: blur(8px); }
+.btn--ghost.is-on { border-color: var(--black); }
+.btn--icon { padding: 9px; }
+.chip {
+  border: 1px solid var(--line); background: var(--white); padding: 6px 9px; border-radius: 999px;
+  font-size: 11px; cursor: pointer; white-space: nowrap;
+}
+.chip:hover { border-color: var(--black); }
+.badge {
+  background: var(--black); color: var(--white); border-radius: 999px; min-width: 18px; height: 18px;
+  padding: 0 5px; font-size: 11px; display: inline-flex; align-items: center; justify-content: center;
+}
+.btn:hover .badge { background: var(--white); color: var(--black); }
+.eyebrow { text-transform: uppercase; letter-spacing: 0.22em; font-size: 12px; color: var(--muted); margin: 0; }
+
+/* ---------- startskärm */
+.start {
+  position: absolute; inset: 0; display: grid; place-items: center; padding: 24px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.72), rgba(245,240,232,0.88));
+  backdrop-filter: blur(6px);
+  z-index: 30;
+}
+.start__card { max-width: 520px; text-align: center; display: grid; gap: 22px; justify-items: center; }
+.start__logo { width: min(340px, 78vw); height: auto; }
+.start__lead { font-size: 18px; line-height: 1.5; margin: 0; font-weight: 300; }
+.start__help { font-size: 13px; color: var(--muted); line-height: 1.7; margin: 6px 0 0; max-width: 420px; }
+.start__note { font-size: 11px; color: var(--muted); margin: 0; letter-spacing: 0.04em; }
+
+/* ---------- HUD */
+.hud { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
+.hud > * { pointer-events: auto; }
+.hud__top {
+  position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; gap: 12px; pointer-events: none;
+}
+.hud__top > * { pointer-events: auto; }
+.hud__logo { height: 26px; width: auto; filter: drop-shadow(0 0 12px rgba(255,255,255,0.9)); }
+.hud__actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.hud__hint {
+  position: absolute; top: 64px; left: 50%; transform: translateX(-50%); font-size: 12px;
+  background: var(--overlay); padding: 6px 12px; border-radius: 999px;
+}
+.crosshair {
+  position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px;
+  border: 1.5px solid var(--black); border-radius: 50%; box-shadow: 0 0 0 2px rgba(255,255,255,0.7);
+  pointer-events: none !important;
+}
+.tour-caption {
+  position: absolute; bottom: calc(28px + var(--safe-b)); left: 50%; transform: translateX(-50%);
+  background: var(--overlay); backdrop-filter: blur(8px); padding: 14px 20px; max-width: min(560px, 90vw);
+  font-size: 14px; line-height: 1.5; text-align: center; box-shadow: var(--shadow);
+}
+.toast {
+  position: absolute; left: 50%; top: 76px; transform: translate(-50%, -10px); opacity: 0;
+  background: var(--black); color: var(--white); padding: 10px 16px; font-size: 13px;
+  transition: opacity 0.2s, transform 0.2s; pointer-events: none !important;
+}
+.toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- minikarta */
+.minimap {
+  position: absolute; right: 18px; bottom: calc(18px + var(--safe-b)); width: 270px;
+  background: var(--overlay); backdrop-filter: blur(10px); padding: 12px; box-shadow: var(--shadow);
+}
+.minimap svg { width: 100%; height: auto; display: block; cursor: crosshair; }
+.minimap__label { font-size: 0.82px; text-anchor: middle; dominant-baseline: middle; fill: #333; pointer-events: none; letter-spacing: 0.02px; }
+.minimap__label--muted { fill: #888; }
+.minimap__fixture { fill: rgba(17,17,17,0.14); pointer-events: none; }
+.minimap__jumps { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+
+/* ---------- joystick */
+.joystick {
+  position: absolute; left: 22px; bottom: calc(26px + var(--safe-b)); width: 120px; height: 120px;
+  border-radius: 50%; background: rgba(255,255,255,0.55); border: 1px solid rgba(17,17,17,0.18);
+  backdrop-filter: blur(6px); touch-action: none; display: grid; place-items: center;
+}
+.joystick__knob { width: 52px; height: 52px; border-radius: 50%; background: var(--black); opacity: 0.85; pointer-events: none; }
+.joystick.is-active .joystick__knob { opacity: 1; }
+
+/* ---------- tooltip (hover på produkt) */
+.tooltip {
+  position: fixed; z-index: 15; pointer-events: none; transform: translate(14px, 14px);
+  background: var(--white); padding: 8px 12px; box-shadow: var(--shadow); font-size: 13px; line-height: 1.35;
+  border: 1px solid var(--line);
+}
+.tooltip strong { font-weight: 500; display: block; }
+.tooltip span { color: var(--muted); }
+
+.hide-sm { }
+@media (max-width: 700px) {
+  .hide-sm { display: none !important; }
+  .hud__top { padding: 10px 12px; }
+  .hud__logo { height: 20px; }
+  .btn--ghost { padding: 9px 11px; }
+  .minimap { left: 12px; right: 12px; width: auto; top: 60px; bottom: auto; }
+  .minimap svg { max-height: 34vh; }
+  .tour-caption { bottom: calc(160px + var(--safe-b)); }
+}

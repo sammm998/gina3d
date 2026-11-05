@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 160" width="800" height="160">
+  <!-- Neutral platshållare. Lägg den riktiga logotypen som assets/ginatricot-logo.svg -->
+  <rect x="4" y="4" width="792" height="152" fill="none" stroke="#111" stroke-width="3" stroke-dasharray="14 10"/>
+  <text x="400" y="78" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="44" fill="#111">LOGOTYP</text>
+  <text x="400" y="122" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#555">assets/ginatricot-logo.svg saknas</text>
+</svg>
