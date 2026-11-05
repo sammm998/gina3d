@@ -225,3 +225,41 @@ a.btn { text-decoration: none; }
 @media (max-width: 700px) {
   .app.has-panel .minimap, .app.has-panel .joystick { display: none; }
 }
+
+/* ---------- AR-provning */
+.tryon { position: fixed; inset: 0; z-index: 40; display: grid; grid-template-columns: 1fr 380px; background: var(--white); }
+.tryon__stage { position: relative; background: #f2efe9; display: grid; place-items: center; overflow: hidden; min-height: 0; }
+.tryon__video { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.tryon__canvas { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; }
+.tryon__canvas.is-empty { display: none; }
+.tryon__result { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #f2efe9; }
+.tryon__empty { text-align: center; max-width: 380px; padding: 24px; display: grid; gap: 16px; justify-items: center; }
+.tryon__empty p { margin: 0; line-height: 1.6; }
+.tryon__modes { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.tryon__modes--side { justify-content: stretch; }
+.tryon__modes--side > * { flex: 1; }
+.tryon__status {
+  position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); background: rgba(255,255,255,0.92);
+  padding: 10px 16px; font-size: 13px; max-width: min(520px, 90%); text-align: center; box-shadow: var(--shadow);
+}
+.tryon__status.is-error { background: #111; color: #fff; }
+.tryon__side { overflow-y: auto; padding: 0 22px calc(24px + var(--safe-b)); display: grid; gap: 18px; align-content: start; border-left: 1px solid var(--line); }
+.tryon__head { padding-left: 0; padding-right: 0; }
+.tryon__product { display: flex; justify-content: space-between; font-size: 14px; }
+.tryon__product strong { font-weight: 500; }
+.privacy { background: var(--cream); padding: 12px 14px; font-size: 12.5px; line-height: 1.55; }
+.privacy strong { font-weight: 600; }
+.privacy.is-warning { background: #fff4e5; border: 1px solid #e9c48a; }
+.garments { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 6px; }
+.garment { aspect-ratio: 3 / 4; padding: 4px; background: var(--cream); border: 1px solid transparent; cursor: pointer; }
+.garment.is-active { border-color: var(--black); background: var(--white); }
+.garment img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.slider { display: grid; grid-template-columns: 70px 1fr 52px; align-items: center; gap: 10px; font-size: 13px; }
+.slider input { width: 100%; accent-color: var(--black); }
+.slider output { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+.select { padding: 9px; border: 1px solid var(--line); font: inherit; background: var(--white); }
+.check { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; line-height: 1.4; }
+@media (max-width: 860px) {
+  .tryon { grid-template-columns: 1fr; grid-template-rows: minmax(0, 52vh) 1fr; }
+  .tryon__side { border-left: 0; border-top: 1px solid var(--line); }
+}

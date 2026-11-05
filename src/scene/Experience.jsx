@@ -90,6 +90,8 @@ if (LEVELS.includes(LOCKED_QUALITY)) useStore.getState().setQuality(LOCKED_QUALI
 
 export default function Experience({ children }) {
   const quality = useStore((s) => s.quality);
+  // Pausa 3D-renderingen medan AR-provningen är öppen (sparar batteri och GPU).
+  const paused = useStore((s) => s.tryOn.open);
   const [dpr, setDpr] = useState(Math.min(window.devicePixelRatio, 1.75));
   const post = quality !== 'low';
 
@@ -109,6 +111,7 @@ export default function Experience({ children }) {
   return (
     <Canvas
       className="scene-canvas"
+      frameloop={paused ? 'never' : 'always'}
       dpr={dpr}
       camera={{ fov: window.innerWidth < 700 ? 74 : 66, near: 0.05, far: 90, position: [0, 1.6, 12] }}
       gl={{

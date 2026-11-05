@@ -4,6 +4,7 @@ import StartScreen from './ui/StartScreen.jsx';
 import Hud from './ui/Hud.jsx';
 import ProductPanel from './ui/ProductPanel.jsx';
 import Wishlist from './ui/Wishlist.jsx';
+import TryOn from './ui/TryOn.jsx';
 import { useStore } from './state/useStore.js';
 import { buildWorld } from './nav/world.js';
 import { FIXTURES } from './config/fixtures.js';
@@ -33,6 +34,7 @@ export default function App() {
           <Hud />
           <ProductPanel />
           <Wishlist />
+          <TryOn />
         </>
       ) : (
         <StartScreen ready={ready} />
