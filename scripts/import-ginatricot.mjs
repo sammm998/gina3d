@@ -259,11 +259,15 @@ async function importOne({ url, category }, args, canCutout) {
   const pack = stats[0];
   let anchorsOut = null;
   if (!tryOnImage && pack && pack.skin < 0.06 && pack.borderStd < 18) {
-    try {
-      await cutoutBg(pack.f, tryOnFile);
-      tryOnImage = `${PUBLIC_PREFIX}/${p.id}-tryon.png`;
-    } catch (e) {
-      console.warn(`  ! friläggning: ${e.message}`);
+    // ljusa plagg mot ljus bakgrund: försök igen med allt lägre tolerans
+    for (const tolerance of [26, 14, 8, 5]) {
+      try {
+        await cutoutBg(pack.f, tryOnFile, { tolerance });
+        tryOnImage = `${PUBLIC_PREFIX}/${p.id}-tryon.png`;
+        break;
+      } catch (e) {
+        if (tolerance === 5) console.warn(`  ! friläggning: ${e.message}`);
+      }
     }
   }
   if (!tryOnImage && canCutout) {
@@ -358,11 +362,11 @@ export async function productUrlsFromSitemap(indexUrl, { verbose = false } = {})
 /** Vilken butikskategori en produkt-URL hör till (svenska URL-delar på ginatricot.com). */
 const URL_CATEGORIES = [
   ['jeans', /\/klader\/jeans\//],
-  ['dresses', /\/klader\/kl[aä]nningar\//],
+  ['dresses', /\/klader\/kl[aä]nningar(jumpsuits)?\//],
   ['skirts', /\/klader\/kjolar\//],
-  ['outerwear', /\/klader\/(jackor|kappor|ytterkl[aä]der|blazers?|kavajer|jackor-kappor|rockar)[/-]/],
-  ['tops', /\/klader\/(toppar|tr[oö]jor|skjortor|blusar|skjortor-blusar|t-shirts|linnen)[/-]/],
-  ['bags', /\/accessoarer\/v[aä]skor\//],
+  ['outerwear', /\/klader\/(coatsjackets|jackor|kappor|ytterkl[aä]der|blazers?|kavajer|jackor-kappor|rockar)[/-]/],
+  ['tops', /\/klader\/(toppar|tr[oö]jor|blusarskjortor|skjortor|blusar|skjortor-blusar|t-shirts|linnen)[/-]/],
+  ['bags', /\/accessoarer\/v[aä]skor(planbocker)?\//],
   ['shoes', /\/accessoarer\/skor\//],
 ];
 const EXCLUDE = /young|miss-y|underkl|badkl|strumpor|pyjamas|sovplagg|slippers|tofflor/;
