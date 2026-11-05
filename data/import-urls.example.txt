@@ -1,0 +1,6 @@
+# Kopiera till data/import-urls.txt och klistra in produktsidor från ginatricot.com.
+# En URL per rad. Valfritt: börja raden med kategori (tops, jeans, dresses, skirts,
+# outerwear, bags, shoes, accessories) om den inte ska gissas från sidan.
+#
+# jeans https://www.ginatricot.com/se/...
+# https://www.ginatricot.com/se/...

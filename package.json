@@ -10,7 +10,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "placeholders": "python3 scripts/generate_placeholders.py",
-    "fetch-model": "node scripts/fetch-pose-model.mjs"
+    "fetch-model": "node scripts/fetch-pose-model.mjs",
+    "import:ginatricot": "node scripts/import-ginatricot.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.1.0",

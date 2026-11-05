@@ -9,7 +9,9 @@ export const COLOR_HEX = {
   champagne: '#e6d3b3', ljusblå: '#a9c1d9', mellanblå: '#5f7fa6', mörkblå: '#2f4466',
   'ljus denim': '#9db6cf', grå: '#9b9b9b', gråmelerad: '#b3b1ad', marinblå: '#24304a',
   smaragd: '#1f5c4a', cognac: '#8a4f2a', rosa: '#e7b9b6', brun: '#5a3d2b', röd: '#a4262c',
-  oliv: '#6b6b45', grön: '#3f6b4a', gul: '#e4c86a', lila: '#8a6f9e', silver: '#c0c0c0', guld: '#c9a84f',
+  oliv: '#6b6b45', blå: '#4f6f9a', ljusgrå: '#cfcdc8', mörkgrå: '#4a4a4a', creme: '#efe6d4',
+  krämvit: '#efe8dc', ljusrosa: '#efd0cc', vinröd: '#6e1f2a', 'mörk denim': '#2c3e5c', 'denimblå': '#5f7fa6',
+  khaki: '#a39a72', sand: '#d6c4a3', turkos: '#3f9a96', orange: '#d9783a', mint: '#bfe0cf', grön: '#3f6b4a', gul: '#e4c86a', lila: '#8a6f9e', silver: '#c0c0c0', guld: '#c9a84f',
 };
 
 export function colorName(c) {

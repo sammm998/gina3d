@@ -72,7 +72,8 @@ const curvedPlane = (() => {
 
 function FaceOut({ entry }) {
   const { product: p, slot } = entry;
-  const tex = useLazyTexture(p.tryOnImage, slot.pos, 15);
+  // Frilagd tryOnImage ger bäst resultat; annars används första produktbilden.
+  const tex = useLazyTexture(p.tryOnImage || p.images[0], slot.pos, 15);
   const hl = useIsHighlighted(p.id);
   const L = hangLength(p);
   const W = L * 0.75;

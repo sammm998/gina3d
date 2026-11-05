@@ -1,0 +1,322 @@
+#!/usr/bin/env node
+/**
+ * Importerar riktiga produkter från ginatricot.com till data/products.json.
+ *
+ *   npm run import:ginatricot -- --urls data/import-urls.txt
+ *   npm run import:ginatricot -- --url https://www.ginatricot.com/se/... --url https://...
+ *   npm run import:ginatricot -- --category-url https://www.ginatricot.com/se/jeans --limit 6
+ *
+ * Flaggor:
+ *   --urls <fil>          textfil med en produkt-URL per rad (# = kommentar).
+ *                         En rad kan börja med en kategori: "jeans https://..."
+ *   --url <url>           en produkt-URL (kan upprepas)
+ *   --category-url <url>  kategorisida – produktlänkar hämtas automatiskt (best effort)
+ *   --category <id>       tvinga kategori (tops, jeans, dresses, skirts, outerwear, bags, shoes …)
+ *   --limit <n>           max antal produkter per kategorisida (standard 8)
+ *   --append              lägg till i befintlig products.json i stället för att ersätta
+ *   --no-cutout           hoppa över automatisk friläggning av tryOnImage
+ *
+ * Så fungerar det:
+ *   1. Produktsidan hämtas och strukturerad data läses ut (schema.org Product i JSON-LD,
+ *      med Open Graph-taggar som reserv): namn, pris, valuta, färg, storlekar, bilder.
+ *   2. Bilderna laddas ner till assets/products/ginatricot/.
+ *   3. tryOnImage (transparent PNG) skapas automatiskt om paketet
+ *      @imgly/background-removal-node är installerat:
+ *        npm i -D @imgly/background-removal-node
+ *      Annars importeras produkten utan tryOnImage (AR-provning avstängd för den) tills
+ *      du lägger en frilagd PNG som assets/products/ginatricot/<id>-tryon.png och kör igen.
+ *
+ * Kör skriptet från en dator/miljö som når www.ginatricot.com. Bilderna och texterna
+ * tillhör Gina Tricot – använd dem bara med varumärkets tillstånd.
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+
+const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const OUT_DIR = path.join(ROOT, 'assets', 'products', 'ginatricot');
+const DATA = path.join(ROOT, 'data', 'products.json');
+const PUBLIC_PREFIX = '/assets/products/ginatricot';
+const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
+
+// ------------------------------------------------------------------ argument
+
+function parseArgs(argv) {
+  const a = { urls: [], categoryUrls: [], limit: 8, append: false, cutout: true, category: null };
+  for (let i = 0; i < argv.length; i++) {
+    const k = argv[i];
+    const v = () => argv[++i];
+    if (k === '--url') a.urls.push({ url: v() });
+    else if (k === '--urls') {
+      for (const line of fs.readFileSync(v(), 'utf8').split('\n')) {
+        const s = line.trim();
+        if (!s || s.startsWith('#')) continue;
+        const parts = s.split(/\s+/);
+        if (parts.length > 1) a.urls.push({ category: parts[0], url: parts[1] });
+        else a.urls.push({ url: parts[0] });
+      }
+    } else if (k === '--category-url') a.categoryUrls.push(v());
+    else if (k === '--category') a.category = v();
+    else if (k === '--limit') a.limit = Number(v()) || 8;
+    else if (k === '--append') a.append = true;
+    else if (k === '--no-cutout') a.cutout = false;
+    else if (k === '--help' || k === '-h') {
+      console.log(fs.readFileSync(new URL(import.meta.url), 'utf8').split('*/')[0]);
+      process.exit(0);
+    }
+  }
+  return a;
+}
+
+// ------------------------------------------------------------------ hämtning
+
+async function fetchText(url) {
+  const res = await fetch(url, { headers: { 'User-Agent': UA, 'Accept-Language': 'sv-SE,sv;q=0.9' }, redirect: 'follow' });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText} för ${url}`);
+  return res.text();
+}
+
+async function download(url, file) {
+  const res = await fetch(url, { headers: { 'User-Agent': UA, Referer: 'https://www.ginatricot.com/' } });
+  if (!res.ok) throw new Error(`${res.status} för bild ${url}`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  fs.writeFileSync(file, buf);
+  return res.headers.get('content-type') || '';
+}
+
+// ------------------------------------------------------------------ tolkning
+
+export function extractJsonLd(html) {
+  const out = [];
+  const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let m;
+  while ((m = re.exec(html))) {
+    try {
+      const j = JSON.parse(m[1].trim());
+      const stack = Array.isArray(j) ? [...j] : [j];
+      while (stack.length) {
+        const n = stack.shift();
+        if (!n || typeof n !== 'object') continue;
+        out.push(n);
+        if (Array.isArray(n['@graph'])) stack.push(...n['@graph']);
+      }
+    } catch {
+      /* ogiltig JSON-LD – hoppa över */
+    }
+  }
+  return out;
+}
+
+function meta(html, prop) {
+  const re = new RegExp(`<meta[^>]+(?:property|name)=["']${prop.replace(/[:.]/g, '\\$&')}["'][^>]*content=["']([^"']*)["']`, 'i');
+  const re2 = new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]*(?:property|name)=["']${prop.replace(/[:.]/g, '\\$&')}["']`, 'i');
+  return (html.match(re) || html.match(re2) || [])[1] ?? null;
+}
+
+const decode = (s) => (s ?? '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+const typeOf = (n) => [].concat(n['@type'] || []).map(String);
+const toArr = (x) => (x == null ? [] : Array.isArray(x) ? x : [x]);
+const imgUrl = (x) => (typeof x === 'string' ? x : x?.url || x?.contentUrl || null);
+
+/** Plockar ut produktdata ur en produktsidas HTML. */
+export function parseProduct(html, pageUrl) {
+  const nodes = extractJsonLd(html);
+  const group = nodes.find((n) => typeOf(n).includes('ProductGroup'));
+  const prod = nodes.find((n) => typeOf(n).includes('Product')) || group;
+  const variants = toArr(group?.hasVariant || prod?.hasVariant);
+
+  const name = decode(prod?.name || meta(html, 'og:title') || '');
+  if (!name) throw new Error('Hittade inget produktnamn (ingen JSON-LD/Open Graph på sidan)');
+
+  const offers = [...toArr(prod?.offers), ...variants.flatMap((v) => toArr(v.offers))];
+  const flatOffers = offers.flatMap((o) => (o?.['@type'] === 'AggregateOffer' ? [o, ...toArr(o.offers)] : [o]));
+  const priced = flatOffers.find((o) => o?.price != null || o?.lowPrice != null);
+  const price = Number(priced?.price ?? priced?.lowPrice ?? meta(html, 'product:price:amount') ?? 0);
+  const currency = priced?.priceCurrency || meta(html, 'product:price:currency') || 'SEK';
+
+  const images = [...new Set([
+    ...toArr(prod?.image).map(imgUrl),
+    ...variants.flatMap((v) => toArr(v.image).map(imgUrl)),
+    meta(html, 'og:image'),
+  ].filter(Boolean).map((u) => new URL(decode(u), pageUrl).href))];
+
+  const colors = [...new Set([prod?.color, ...variants.map((v) => v.color)].filter(Boolean).map(decode))];
+  const sizes = [...new Set([prod?.size, ...variants.map((v) => v.size)].flat().filter(Boolean).map((s) => decode(typeof s === 'string' ? s : s.name)))];
+
+  const sku = prod?.sku || prod?.productID || prod?.mpn || group?.productGroupID || null;
+  const slug = new URL(pageUrl).pathname.split('/').filter(Boolean).pop() || name;
+  const id = `gt-${String(sku || slug).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)}`;
+
+  return { id, name, price, currency, colors, sizes, imageUrls: images, productUrl: pageUrl, breadcrumb: breadcrumbText(nodes) };
+}
+
+function breadcrumbText(nodes) {
+  const bc = nodes.find((n) => typeOf(n).includes('BreadcrumbList'));
+  return toArr(bc?.itemListElement).map((e) => e?.name || e?.item?.name || '').join(' / ');
+}
+
+/** Svenska kategorinamn/URL-delar -> butikens kategori-id (se src/config/zones.js). */
+const CATEGORY_RULES = [
+  [/jeans|denim/, 'jeans'],
+  [/klänning|klanning|dress/, 'dresses'],
+  [/kjol|skirt/, 'skirts'],
+  [/jack|kapp|rock|coat|blazer|ytterkläder|ytterklader|puffer|trench/, 'outerwear'],
+  [/väsk|vask|bag|shopper/, 'bags'],
+  [/sko|skor|shoe|boots|stövl|loafer|sneaker|sandal/, 'shoes'],
+  [/byxor|trousers|pants|shorts/, 'trousers'],
+  [/smycken|accessoar|accessor|halsband|örhäng|scarf|bälte|solglas/, 'accessories'],
+  [/topp|top|t-shirt|tröj|blus|skjort|stick|linne|body|shirt|knit/, 'tops'],
+];
+
+export function guessCategory(...texts) {
+  const s = texts.join(' ').toLowerCase();
+  for (const [re, cat] of CATEGORY_RULES) if (re.test(s)) return cat;
+  return 'tops';
+}
+
+/** Hämtar produktlänkar från en kategorisida (best effort: JSON-LD ItemList, annars länkar). */
+export function productLinksFromCategory(html, pageUrl, limit) {
+  const nodes = extractJsonLd(html);
+  const list = nodes.find((n) => typeOf(n).includes('ItemList'));
+  let links = toArr(list?.itemListElement).map((e) => e?.url || e?.item?.url || (typeof e?.item === 'string' ? e.item : null)).filter(Boolean);
+  if (!links.length) {
+    const base = new URL(pageUrl);
+    const seen = new Set();
+    const re = /href=["']([^"'#?]+)["']/gi;
+    let m;
+    while ((m = re.exec(html))) {
+      const u = new URL(decode(m[1]), base);
+      if (u.host !== base.host) continue;
+      const parts = u.pathname.split('/').filter(Boolean);
+      // produktsidor ligger normalt djupare än kategorisidan och slutar med ett id/artikelnummer
+      if (parts.length <= base.pathname.split('/').filter(Boolean).length) continue;
+      if (!/\d{4,}/.test(parts[parts.length - 1])) continue;
+      seen.add(u.href);
+    }
+    links = [...seen];
+  }
+  return links.map((u) => new URL(u, pageUrl).href).slice(0, limit);
+}
+
+// ------------------------------------------------------------------ frilägg
+
+let removeBackground = null;
+async function loadCutout() {
+  try {
+    ({ removeBackground } = await import('@imgly/background-removal-node'));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function cutout(srcFile, outFile) {
+  const blob = await removeBackground(`file://${srcFile}`, { output: { format: 'image/png' } });
+  fs.writeFileSync(outFile, Buffer.from(await blob.arrayBuffer()));
+}
+
+// ------------------------------------------------------------------ main
+
+const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/avif': 'avif' };
+
+async function importOne({ url, category }, args, canCutout) {
+  const html = await fetchText(url);
+  const p = parseProduct(html, url);
+  const cat = args.category || category || guessCategory(p.breadcrumb, new URL(url).pathname, p.name);
+  fs.mkdirSync(OUT_DIR, { recursive: true });
+  const images = [];
+  const files = [];
+  for (const [i, imgUrlStr] of p.imageUrls.slice(0, 6).entries()) {
+    const tmp = path.join(OUT_DIR, `${p.id}-${i + 1}.tmp`);
+    try {
+      const type = await download(imgUrlStr, tmp);
+      const ext = EXT[type.split(';')[0]] || path.extname(new URL(imgUrlStr).pathname).slice(1) || 'jpg';
+      const file = path.join(OUT_DIR, `${p.id}-${i + 1}.${ext}`);
+      fs.renameSync(tmp, file);
+      files.push(file);
+      images.push(`${PUBLIC_PREFIX}/${path.basename(file)}`);
+    } catch (e) {
+      fs.rmSync(tmp, { force: true });
+      console.warn(`  ! ${e.message}`);
+    }
+  }
+  if (!images.length) throw new Error('Inga bilder kunde laddas ner');
+
+  // tryOnImage: befintlig frilagd PNG, annars automatisk friläggning.
+  // Packshots (plagget utan modell) brukar ligga sist – prova dem först.
+  const tryOnFile = path.join(OUT_DIR, `${p.id}-tryon.png`);
+  let tryOnImage = fs.existsSync(tryOnFile) ? `${PUBLIC_PREFIX}/${p.id}-tryon.png` : null;
+  const accessory = ['bags', 'shoes', 'accessories'].includes(cat);
+  if (!tryOnImage && canCutout) {
+    const src = files.length > 1 ? files[files.length - 1] : files[0];
+    try {
+      await cutout(src, tryOnFile);
+      tryOnImage = `${PUBLIC_PREFIX}/${p.id}-tryon.png`;
+    } catch (e) {
+      console.warn(`  ! friläggning misslyckades: ${e.message}`);
+    }
+  }
+
+  const entry = {
+    id: p.id,
+    name: p.name,
+    price: p.price,
+    currency: p.currency,
+    category: cat,
+    colors: p.colors.length ? p.colors : [],
+    sizes: p.sizes.length ? p.sizes : [],
+    images,
+    tryOnImage,
+    productUrl: p.productUrl,
+  };
+  if (!tryOnImage && !accessory) entry.tryOnType = 'none';
+  return entry;
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  for (const cu of args.categoryUrls) {
+    console.log(`Kategorisida: ${cu}`);
+    const html = await fetchText(cu);
+    const links = productLinksFromCategory(html, cu, args.limit);
+    console.log(`  hittade ${links.length} produktlänkar`);
+    const cat = args.category || guessCategory(new URL(cu).pathname);
+    links.forEach((url) => args.urls.push({ url, category: cat }));
+  }
+  if (!args.urls.length) {
+    console.error('Ange produkter med --url, --urls eller --category-url (se --help).');
+    process.exit(1);
+  }
+  const canCutout = args.cutout && (await loadCutout());
+  if (args.cutout && !canCutout) {
+    console.log('Info: @imgly/background-removal-node saknas – tryOnImage skapas inte automatiskt.');
+  }
+
+  const existing = args.append && fs.existsSync(DATA) ? JSON.parse(fs.readFileSync(DATA, 'utf8')) : [];
+  const byId = new Map(existing.map((p) => [p.id, p]));
+  let ok = 0;
+  for (const item of args.urls) {
+    process.stdout.write(`→ ${item.url}\n`);
+    try {
+      const entry = await importOne(item, args, canCutout);
+      byId.set(entry.id, entry);
+      ok++;
+      console.log(`  ✓ ${entry.name} (${entry.category}, ${entry.price} ${entry.currency}, ${entry.images.length} bilder${entry.tryOnImage ? ', tryOn' : ''})`);
+    } catch (e) {
+      console.warn(`  ✗ ${e.message}`);
+    }
+    await new Promise((r) => setTimeout(r, 600)); // var snäll mot servern
+  }
+  if (!ok) {
+    console.error('Inga produkter importerades – products.json lämnades orörd.');
+    process.exit(1);
+  }
+  fs.writeFileSync(DATA, JSON.stringify([...byId.values()], null, 2) + '\n');
+  console.log(`\nSkrev ${byId.size} produkter till ${path.relative(ROOT, DATA)}`);
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}
