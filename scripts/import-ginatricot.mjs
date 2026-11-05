@@ -274,6 +274,10 @@ async function importOne({ url, category }, args, canCutout) {
 
 /** Skriver ut en sidas struktur – för att anpassa importen när sajten ändras. */
 function diagnose(html, url) {
+  if (/\.(txt|xml)(\?|$)/.test(url)) {
+    console.log(`[diag] ${url} (${html.length} tecken):\n${html.slice(0, 4000)}`);
+    return;
+  }
   const nodes = extractJsonLd(html);
   const title = (html.match(/<title>([^<]*)/i) || [])[1];
   const links = [...new Set([...html.matchAll(/href=["']([^"'#]+)["']/gi)].map((m) => { try { return new URL(decode(m[1]), url).href; } catch { return null; } }).filter((u) => u && u.includes('ginatricot')))];
