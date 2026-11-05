@@ -282,6 +282,10 @@ function diagnose(html, url) {
   console.log(`[diag] JSON-LD-typer: ${nodes.map((n) => typeOf(n).join('+')).join(', ') || 'inga'}`);
   console.log(`[diag] __NEXT_DATA__: ${html.includes('__NEXT_DATA__')}, bildvärdar: ${imgs.join(', ')}`);
   console.log(`[diag] ${links.length} interna länkar, t.ex.:\n  ${links.slice(0, 120).join('\n  ')}`);
+  const imgUrls = [...new Set([...html.matchAll(/https?:\/\/ginatricotpc\.imgix\.net\/[^"'\s)\\]+/gi)].map((m) => m[0]))];
+  console.log(`[diag] ${imgUrls.length} produktbilder, t.ex.:\n  ${imgUrls.slice(0, 12).join('\n  ')}`);
+  const i = html.indexOf('ginatricotpc.imgix.net');
+  if (i > 0) console.log(`[diag] utdrag runt första produktbilden:\n${html.slice(Math.max(0, i - 1500), i + 400).replace(/\s+/g, ' ')}`);
 }
 
 /** Läge för byggservern (t.ex. Railway): styrs av miljövariabler och fäller aldrig bygget. */

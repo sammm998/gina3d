@@ -27,7 +27,8 @@ export const PLAYER = {
 };
 
 export const PATHS = {
-  logo: '/assets/ginatricot-logo.svg',
+  // Varumärkets logotyp (tillhandahållen). Byt till .svg här om du har en vektorversion.
+  logo: '/assets/ginatricot-logo.png',
   logoFallback: '/assets/logo-placeholder.svg',
   products: '/data/products.json',
   campaign: [

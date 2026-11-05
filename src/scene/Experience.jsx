@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { AdaptiveDpr, ContactShadows, Environment, Lightformer, PerformanceMonitor } from '@react-three/drei';
+import { ContactShadows, Environment, Lightformer, PerformanceMonitor } from '@react-three/drei';
 import { Bloom, EffectComposer, N8AO, SMAA, ToneMapping, Vignette } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
 import * as THREE from 'three';
@@ -131,7 +131,6 @@ export default function Experience({ children }) {
         onDecline={() => { step(-1); setDpr((d) => Math.max(1, d - 0.25)); }}
         onIncline={() => setDpr((d) => Math.min(Math.min(window.devicePixelRatio, 1.75), d + 0.25))}
       />
-      <AdaptiveDpr pixelated={false} />
       <ToneMapSync post={post} />
       <Lighting />
       <Suspense fallback={null}>

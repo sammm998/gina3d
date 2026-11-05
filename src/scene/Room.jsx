@@ -1,7 +1,6 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { MeshReflectorMaterial } from '@react-three/drei';
 import { STORE } from '../config/storeConfig.js';
 import { useStore } from '../state/useStore.js';
 import { floorTexture, glowTexture, mallFloorTexture } from './textures.js';
@@ -50,24 +49,8 @@ function Floor() {
     <group>
       <mesh rotation-x={-Math.PI / 2} position={[0, 0, (minZ + maxZ) / 2]} onClick={onClick} userData={{ walkable: true }}>
         <planeGeometry args={[W, D]} />
-        {quality === 'high' ? (
-          <MeshReflectorMaterial
-            map={tex}
-            color="#dcdbd7"
-            resolution={512}
-            blur={[400, 120]}
-            mixBlur={1}
-            mixStrength={0.28}
-            mixContrast={1}
-            mirror={0}
-            depthScale={0}
-            roughness={0.55}
-            metalness={0}
-            envMapIntensity={0.3}
-          />
-        ) : (
-          <meshStandardMaterial map={tex} color="#dcdbd7" roughness={0.42} metalness={0} envMapIntensity={0.35} />
-        )}
+        {/* Polerat kakel: reflexer via environment map (ingen extra scenrendering, inga spökbilder). */}
+        <meshStandardMaterial map={tex} color="#dcdbd7" roughness={quality === 'high' ? 0.3 : 0.42} metalness={0} envMapIntensity={quality === 'high' ? 0.55 : 0.35} />
       </mesh>
       <mesh rotation-x={-Math.PI / 2} position={[0, 0, maxZ + 3.5]} onClick={onClick} userData={{ walkable: true }}>
         <planeGeometry args={[50, 7]} />
