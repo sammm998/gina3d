@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three-stdlib';
 import { useStore } from '../../state/useStore.js';
 import { accessoryKind, fabricKind, garmentClass, hangLength, primaryHex } from '../../data/productMeta.js';
-import { fabricMaterial } from '../textures.js';
+import { fabricMaterial, productSwatch } from '../textures.js';
 import { requestTexture, useLazyTexture } from '../useLazyTexture.js';
 import { productEvents, useIsHighlighted } from './events.js';
 import { MAT } from '../materials.js';
@@ -186,12 +186,12 @@ function SideHung({ entries }) {
     items.forEach((it, i) => hooks.current.setMatrixAt(i, compose(it.x, it.hookY, it.z, it.ry + Math.PI / 2, 1, 1, 1)));
     hooks.current.instanceMatrix.needsUpdate = true;
   }, [items]);
-  const groups = useMemo(() => groupByFabric(items), [items]);
+  const groups = useMemo(() => groupByProduct(items), [items]);
   if (!items.length) return null;
   return (
     <group>
-      {Object.entries(groups).map(([kind, list]) => (
-        <FabricInstances key={kind} kind={kind} geom={sideGeom} items={list} repeat={kind === 'denim' ? 34 : 22}
+      {Object.entries(groups).map(([id, list]) => (
+        <FabricInstances key={id} product={list[0].p} geom={sideGeom} items={list} repeat={fabricKind(list[0].p) === 'denim' ? 34 : 22}
           matrixOf={(it) => compose(it.x, it.y, it.z, it.ry, it.thick, it.L, it.depth, 0, it.rz)} />
       ))}
       <instancedMesh ref={hooks} args={[hookGeom, MAT.chrome, items.length]} raycast={() => null} />
@@ -199,19 +199,44 @@ function SideHung({ entries }) {
   );
 }
 
-/** Delar upp plagg per tygtyp så att varje grupp får rätt tygmaterial (en draw call per typ). */
-function groupByFabric(items) {
+/** Delar upp plagg per produkt så att varje produkt får sitt eget tyg (en draw call per produkt). */
+function groupByProduct(items) {
   const g = {};
-  for (const it of items) (g[fabricKind(it.p)] ??= []).push(it);
+  for (const it of items) (g[it.p.id] ??= []).push(it);
   return g;
 }
 
+/** Var i produktbilden tyget syns bäst, per plaggtyp. */
+const SWATCH_CROP = { upper: [0.38, 0.3, 0.24, 0.22], outer: [0.36, 0.32, 0.28, 0.24], lower: [0.3, 0.3, 0.16, 0.24], skirt: [0.36, 0.2, 0.28, 0.24], full: [0.38, 0.38, 0.24, 0.22] };
+
 /** Instansierade plagg med tygmaterial, per-instansfärg, highlight och klick. */
-function FabricInstances({ kind, geom, items, matrixOf, repeat }) {
+function FabricInstances({ product, geom, items, matrixOf, repeat }) {
   const ref = useRef();
+  const kind = fabricKind(product);
   const ids = useMemo(() => items.map((i) => i.p.id), [items]);
-  const colors = useMemo(() => items.map((i) => i.color), [items]);
+  const [swatchColor, setSwatchColor] = useState(null);
+  const colors = useMemo(
+    () => items.map((i) => (swatchColor ? new THREE.Color(swatchColor).offsetHSL(0, 0, (Math.random() - 0.5) * 0.03).getStyle() : i.color)),
+    [items, swatchColor]
+  );
   const mat = useMemo(() => fabricMaterial(kind, repeat), [kind, repeat]);
+  // Riktigt tyg från produktbilden (om det finns): mönster som textur och färg som bas.
+  useEffect(() => {
+    const url = product.tryOnImage || product.images[0];
+    if (!url) return;
+    let alive = true;
+    productSwatch(url, SWATCH_CROP[garmentClass(product)] ?? SWATCH_CROP.upper).then(({ texture, color }) => {
+      if (!alive) return;
+      const t = texture.clone();
+      t.needsUpdate = true;
+      t.repeat.set(2, 2);
+      mat.map = t;
+      mat.needsUpdate = true;
+      // Med textur bär kartan färgen – instansfärgen blir en ljus ton för variation.
+      setSwatchColor(color ? '#ffffff' : null);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [product, mat]);
   useLayoutEffect(() => {
     items.forEach((it, i) => {
       ref.current.setMatrixAt(i, matrixOf(it));
@@ -293,12 +318,12 @@ function FoldStacks({ entries }) {
     return { pieces, tops };
   }, [entries]);
 
-  const groups = useMemo(() => groupByFabric(pieces), [pieces]);
+  const groups = useMemo(() => groupByProduct(pieces), [pieces]);
   if (!pieces.length) return null;
   return (
     <group>
-      {Object.entries(groups).map(([kind, list]) => (
-        <FabricInstances key={kind} kind={kind} geom={foldGeom} items={list} repeat={kind === 'denim' ? 16 : 10}
+      {Object.entries(groups).map(([id, list]) => (
+        <FabricInstances key={id} product={list[0].p} geom={foldGeom} items={list} repeat={fabricKind(list[0].p) === 'denim' ? 16 : 10}
           matrixOf={(it) => compose(it.x, it.y, it.z, it.ry, it.w, it.h, it.d)} />
       ))}
       {Object.entries(tops).map(([id, list]) => (

@@ -257,3 +257,32 @@ export function fabricMaterial(kind = 'woven', repeat = 6, opts = {}) {
     ...opts,
   });
 }
+
+/**
+ * Tygprov ur en riktig produktbild: klipper ut ett område där plagget syns
+ * (crop = [x, y, w, h] normaliserat) och returnerar { texture, color } där
+ * color är medelfärgen. Används så att vikta och sidohängda plagg får exakt
+ * samma färg och mönster som produktfotot.
+ */
+export function productSwatch(url, crop = [0.38, 0.32, 0.24, 0.2]) {
+  return cached(`swatch:${url}:${crop.join(',')}`, () =>
+    loadImage(url).then((img) => {
+      const S = 128;
+      const c = canvas(S, S);
+      const g = c.getContext('2d');
+      const iw = img.naturalWidth, ih = img.naturalHeight;
+      g.drawImage(img, crop[0] * iw, crop[1] * ih, crop[2] * iw, crop[3] * ih, 0, 0, S, S);
+      const d = g.getImageData(0, 0, S, S).data;
+      let r = 0, gr = 0, b = 0, n = 0;
+      for (let i = 0; i < d.length; i += 16) {
+        if (d[i + 3] < 128) continue; // hoppa över transparenta pixlar
+        r += d[i]; gr += d[i + 1]; b += d[i + 2]; n++;
+      }
+      const color = n ? new THREE.Color(r / n / 255, gr / n / 255, b / n / 255).convertSRGBToLinear() : null;
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = tex.wrapT = THREE.MirroredRepeatWrapping;
+      return { texture: tex, color };
+    })
+  );
+}
