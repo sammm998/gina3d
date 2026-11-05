@@ -272,7 +272,59 @@ async function importOne({ url, category }, args, canCutout) {
   return entry;
 }
 
+/** Skriver ut en sidas struktur – för att anpassa importen när sajten ändras. */
+function diagnose(html, url) {
+  const nodes = extractJsonLd(html);
+  const title = (html.match(/<title>([^<]*)/i) || [])[1];
+  const links = [...new Set([...html.matchAll(/href=["']([^"'#]+)["']/gi)].map((m) => { try { return new URL(decode(m[1]), url).href; } catch { return null; } }).filter((u) => u && u.includes('ginatricot')))];
+  const imgs = [...new Set([...html.matchAll(/https?:\/\/[^"'\s)]+\.(?:jpe?g|png|webp|avif)/gi)].map((m) => new URL(m[0]).host))];
+  console.log(`[diag] ${url} – ${html.length} tecken, titel: ${title}`);
+  console.log(`[diag] JSON-LD-typer: ${nodes.map((n) => typeOf(n).join('+')).join(', ') || 'inga'}`);
+  console.log(`[diag] __NEXT_DATA__: ${html.includes('__NEXT_DATA__')}, bildvärdar: ${imgs.join(', ')}`);
+  console.log(`[diag] ${links.length} interna länkar, t.ex.:\n  ${links.slice(0, 120).join('\n  ')}`);
+}
+
+/** Läge för byggservern (t.ex. Railway): styrs av miljövariabler och fäller aldrig bygget. */
+async function fromEnv() {
+  const discover = process.env.GT_DISCOVER;
+  const cats = (process.env.GT_IMPORT || '').split(/[\s,]+/).filter(Boolean);
+  if (!discover && !cats.length) return;
+  try {
+    for (const u of (discover || '').split(/[\s,]+/).filter(Boolean)) diagnose(await fetchText(u), u);
+    if (!cats.length) return;
+    const limit = Number(process.env.GT_IMPORT_LIMIT) || 4;
+    const urls = [];
+    for (const cu of cats) {
+      const [catOverride, url] = cu.includes('=') ? cu.split('=') : [null, cu];
+      const html = await fetchText(url);
+      const links = productLinksFromCategory(html, url, limit);
+      console.log(`[import] ${url}: ${links.length} produktlänkar`);
+      if (!links.length) diagnose(html, url);
+      links.forEach((l) => urls.push({ url: l, category: catOverride || guessCategory(new URL(url).pathname) }));
+    }
+    const canCutout = process.env.GT_CUTOUT === '1' && (await loadCutout());
+    const out = [];
+    for (const item of urls) {
+      try {
+        const e = await importOne(item, { category: null }, canCutout);
+        out.push(e);
+        console.log(`[import] ✓ ${e.name} (${e.category}) ${e.images.length} bilder${e.tryOnImage ? ' + tryOn' : ''}`);
+      } catch (e) {
+        console.log(`[import] ✗ ${item.url}: ${e.message}`);
+        if (process.env.GT_DEBUG) diagnose(await fetchText(item.url).catch(() => ''), item.url);
+      }
+    }
+    if (out.length) {
+      fs.writeFileSync(DATA, JSON.stringify(out, null, 2) + '\n');
+      console.log(`[import] skrev ${out.length} riktiga produkter till data/products.json`);
+    } else console.log('[import] inga produkter importerades – platshållarna behålls');
+  } catch (e) {
+    console.log(`[import] avbrutet: ${e.message} – platshållarna behålls`);
+  }
+}
+
 async function main() {
+  if (process.argv.includes('--from-env')) return fromEnv();
   const args = parseArgs(process.argv.slice(2));
   for (const cu of args.categoryUrls) {
     console.log(`Kategorisida: ${cu}`);

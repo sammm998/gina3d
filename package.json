@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "dev:https": "HTTPS=1 vite --host",
-    "build": "node scripts/fetch-pose-model.mjs --optional && vite build",
+    "build": "node scripts/fetch-pose-model.mjs --optional && node scripts/import-ginatricot.mjs --from-env && vite build",
     "preview": "vite preview",
     "placeholders": "python3 scripts/generate_placeholders.py",
     "fetch-model": "node scripts/fetch-pose-model.mjs",
