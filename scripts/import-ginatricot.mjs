@@ -31,6 +31,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { anchors as estimateAnchors, classify, cutout as cutoutBg } from './lib/garment-image.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const OUT_DIR = path.join(ROOT, 'assets', 'products', 'ginatricot');
@@ -124,7 +125,8 @@ export function parseProduct(html, pageUrl) {
   const prod = nodes.find((n) => typeOf(n).includes('Product')) || group;
   const variants = toArr(group?.hasVariant || prod?.hasVariant);
 
-  const name = decode(prod?.name || meta(html, 'og:title') || '');
+  const rawName = decode(prod?.name || meta(html, 'og:title') || '');
+  const name = rawName.charAt(0).toUpperCase() + rawName.slice(1);
   if (!name) throw new Error('Hittade inget produktnamn (ingen JSON-LD/Open Graph på sidan)');
 
   const offers = [...toArr(prod?.offers), ...variants.flatMap((v) => toArr(v.offers))];
@@ -146,7 +148,7 @@ export function parseProduct(html, pageUrl) {
   const slug = new URL(pageUrl).pathname.split('/').filter(Boolean).pop() || name;
   const id = `gt-${String(sku || slug).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)}`;
 
-  return { id, name, price, currency, colors, sizes, imageUrls: images, productUrl: pageUrl, breadcrumb: breadcrumbText(nodes) };
+  return { id, name, price, currency, colors, sizes, imageUrls: images, productUrl: pageUrl, breadcrumb: breadcrumbText(nodes), material: prod?.material ? decode(prod.material) : null };
 }
 
 function breadcrumbText(nodes) {
@@ -225,7 +227,9 @@ async function importOne({ url, category }, args, canCutout) {
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const images = [];
   const files = [];
-  for (const [i, imgUrlStr] of p.imageUrls.slice(0, 6).entries()) {
+  const sized = (u) => (/imgix\.net/.test(u) ? `${u.split('?')[0]}?w=900&fit=max&fm=jpg&q=80` : u);
+  for (const [i, imgUrlStr0] of p.imageUrls.slice(0, 6).entries()) {
+    const imgUrlStr = sized(imgUrlStr0);
     const tmp = path.join(OUT_DIR, `${p.id}-${i + 1}.tmp`);
     try {
       const type = await download(imgUrlStr, tmp);
@@ -241,20 +245,43 @@ async function importOne({ url, category }, args, canCutout) {
   }
   if (!images.length) throw new Error('Inga bilder kunde laddas ner');
 
-  // tryOnImage: befintlig frilagd PNG, annars automatisk friläggning.
-  // Packshots (plagget utan modell) brukar ligga sist – prova dem först.
+  // tryOnImage: befintlig frilagd PNG, annars automatisk friläggning av den bild som
+  // mest liknar en produktbild (ingen hud, jämn ljus bakgrund).
   const tryOnFile = path.join(OUT_DIR, `${p.id}-tryon.png`);
   let tryOnImage = fs.existsSync(tryOnFile) ? `${PUBLIC_PREFIX}/${p.id}-tryon.png` : null;
   const accessory = ['bags', 'shoes', 'accessories'].includes(cat);
-  if (!tryOnImage && canCutout) {
-    const src = files.length > 1 ? files[files.length - 1] : files[0];
+  const stats = [];
+  for (const f of files) {
+    try { stats.push({ f, ...(await classify(f)) }); } catch { /* hoppa över */ }
+  }
+  stats.sort((a, b) => a.score - b.score);
+  if (process.env.GT_DEBUG) console.log(`  bilder: ${stats.map((x) => `${path.basename(x.f)} hud=${x.skin.toFixed(2)} kant=${x.borderStd.toFixed(0)}`).join(' | ')}`);
+  const pack = stats[0];
+  let anchorsOut = null;
+  if (!tryOnImage && pack && pack.skin < 0.06 && pack.borderStd < 18) {
     try {
-      await cutout(src, tryOnFile);
+      await cutoutBg(pack.f, tryOnFile);
+      tryOnImage = `${PUBLIC_PREFIX}/${p.id}-tryon.png`;
+    } catch (e) {
+      console.warn(`  ! friläggning: ${e.message}`);
+    }
+  }
+  if (!tryOnImage && canCutout) {
+    try {
+      await cutout(pack?.f ?? files[0], tryOnFile);
       tryOnImage = `${PUBLIC_PREFIX}/${p.id}-tryon.png`;
     } catch (e) {
       console.warn(`  ! friläggning misslyckades: ${e.message}`);
     }
   }
+  const tType = { tops: 'upper', outerwear: 'upper', jeans: 'lower', trousers: 'lower', skirts: 'lower', dresses: 'full' }[cat];
+  if (tryOnImage && tType) {
+    try { anchorsOut = await estimateAnchors(tryOnFile, tType, cat === 'outerwear' ? 'outer' : cat === 'skirts' ? 'skirt' : ''); } catch { /* standardankare */ }
+  }
+  // modellfoton (mest hud) blir kampanjbilder och inramade foton
+  const modelPhotos = stats.filter((x) => x.skin > 0.05).sort((a, b) => b.skin - a.skin).map((x) => `${PUBLIC_PREFIX}/${path.basename(x.f)}`);
+  // panelens bildordning: modellfoton först, produktbilden sist
+  images.sort((a, b) => (modelPhotos.includes(b) ? 1 : 0) - (modelPhotos.includes(a) ? 1 : 0));
 
   const entry = {
     id: p.id,
@@ -269,6 +296,9 @@ async function importOne({ url, category }, args, canCutout) {
     productUrl: p.productUrl,
   };
   if (!tryOnImage && !accessory) entry.tryOnType = 'none';
+  if (anchorsOut) entry.tryOnAnchors = anchorsOut;
+  if (p.material) entry.material = p.material;
+  Object.defineProperty(entry, 'modelPhotos', { value: modelPhotos, enumerable: false });
   return entry;
 }
 
@@ -325,8 +355,84 @@ export async function productUrlsFromSitemap(indexUrl, { verbose = false } = {})
   return pages;
 }
 
+/** Vilken butikskategori en produkt-URL hör till (svenska URL-delar på ginatricot.com). */
+const URL_CATEGORIES = [
+  ['jeans', /\/klader\/jeans\//],
+  ['dresses', /\/klader\/klanningar\//],
+  ['skirts', /\/klader\/kjolar\//],
+  ['outerwear', /\/klader\/(jackor|kappor|ytterklader|blazers|kavajer|jackor-kappor)[/-]/],
+  ['tops', /\/klader\/(toppar|trojor|skjortor|blusar|skjortor-blusar|t-shirts|linnen)[/-]/],
+  ['bags', /\/accessoarer\/vaskor\//],
+  ['shoes', /\/accessoarer\/skor\//],
+];
+const EXCLUDE = /young|miss-y|underklader|badklader|strumpor|pyjamas|sovplagg|slippers|tofflor/;
+
+function categoryOfUrl(u) {
+  const p = new URL(u).pathname;
+  if (EXCLUDE.test(p)) return null;
+  return URL_CATEGORIES.find(([, re]) => re.test(p))?.[0] ?? null;
+}
+
+/**
+ * Importerar enligt en plan, t.ex. "tops:5,jeans:4,dresses:4,outerwear:4,skirts:2,bags:2,shoes:2".
+ * Väljer olika modeller (inte färgvarianter av samma plagg) ur sitemapen.
+ */
+async function importFromPlan(sitemapUrl, planStr) {
+  const plan = Object.fromEntries(planStr.split(',').map((kv) => kv.split(':')).map(([k, v]) => [k.trim(), Number(v) || 0]));
+  const pages = await productUrlsFromSitemap(sitemapUrl);
+  console.log(`[import] sitemap: ${pages.length} adresser`);
+  const picked = {};
+  const seenStyle = new Set();
+  for (const u of pages) {
+    const cat = categoryOfUrl(u);
+    if (!cat || !plan[cat]) continue;
+    const slug = new URL(u).pathname.split('/').pop() || '';
+    const style = slug.replace(/-\d+$/, '');
+    if (seenStyle.has(style)) continue;
+    // reservlista: dubbelt så många kandidater som behövs (vissa sidor kan sakna bilder)
+    if ((picked[cat] ??= []).length >= plan[cat] * 2) continue;
+    seenStyle.add(style);
+    picked[cat].push(u);
+  }
+  const out = [];
+  const media = [];
+  for (const [cat, urls] of Object.entries(picked)) {
+    let ok = 0;
+    for (const url of urls) {
+      if (ok >= plan[cat]) break;
+      try {
+        const e = await importOne({ url, category: cat }, { category: null }, false);
+        out.push(e);
+        media.push(...e.modelPhotos.slice(0, 1));
+        ok++;
+        console.log(`[import] ✓ ${cat}: ${e.name} – ${e.price} ${e.currency}, ${e.images.length} bilder${e.tryOnImage ? ', frilagd' : ', ingen friläggning'}`);
+      } catch (err) {
+        console.log(`[import] ✗ ${url}: ${err.message}`);
+      }
+      await new Promise((r) => setTimeout(r, 300));
+    }
+  }
+  if (!out.length) {
+    console.log('[import] inga produkter importerades – platshållarna behålls');
+    return;
+  }
+  fs.writeFileSync(DATA, JSON.stringify(out, null, 2) + '\n');
+  // riktiga modellfoton till skärmar och tavlor
+  const uniq = [...new Set(media)];
+  fs.writeFileSync(path.join(ROOT, 'data', 'media.json'), JSON.stringify({ campaign: uniq.slice(0, 6), photos: uniq.slice(6, 14).length ? uniq.slice(6, 14) : uniq.slice(0, 8) }, null, 2) + '\n');
+  console.log(`[import] skrev ${out.length} riktiga produkter och ${uniq.length} modellfoton`);
+}
+
 /** Läge för byggservern (t.ex. Railway): styrs av miljövariabler och fäller aldrig bygget. */
 async function fromEnv() {
+  if (process.env.GT_IMPORT_PLAN && process.env.GT_SITEMAP) {
+    try {
+      await importFromPlan(process.env.GT_SITEMAP, process.env.GT_IMPORT_PLAN);
+    } catch (e) {
+      console.log(`[import] avbrutet: ${e.message} – platshållarna behålls`);
+    }
+    return;
+  }
   if (process.env.GT_SITEMAP) {
     try {
       const pages = await productUrlsFromSitemap(process.env.GT_SITEMAP, { verbose: true });

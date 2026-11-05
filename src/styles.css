@@ -263,3 +263,7 @@ a.btn { text-decoration: none; }
   .tryon { grid-template-columns: 1fr; grid-template-rows: minmax(0, 52vh) 1fr; }
   .tryon__side { border-left: 0; border-top: 1px solid var(--line); }
 }
+
+.minimap__levels { display: flex; gap: 6px; margin-bottom: 8px; }
+.chip.is-active { background: var(--black); color: var(--white); border-color: var(--black); }
+.minimap__escalator { fill: #cfd3d6; stroke: #111; stroke-width: 0.06; pointer-events: none; }

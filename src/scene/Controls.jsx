@@ -136,7 +136,7 @@ export default function Controls() {
         return;
       }
       if (h.object.userData?.walkable) {
-        if (click) s.navigateTo(h.point.x, h.point.z);
+        if (click) s.navigateTo(h.point.x, h.point.z, null, h.object.userData.level);
         break;
       }
       if (h.object.userData?.action && click) {

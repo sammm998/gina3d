@@ -2,7 +2,8 @@ import { useEffect, useMemo } from 'react';
 import { useIsHighlighted } from '../products/events.js';
 import * as THREE from 'three';
 import { MAT } from '../materials.js';
-import { fabricMaterial } from '../textures.js';
+import { fabricMaterial, productSwatch } from '../textures.js';
+import { useStore } from '../../state/useStore.js';
 
 /**
  * Vit, ansiktslös skyltdocka i low poly, byggd av lathe-geometrier.
@@ -65,6 +66,24 @@ function Body() {
 function Garment({ piece, eventsFor }) {
   const m = useMemo(() => clothMaterial(piece.color, piece.fabric).clone(), [piece.color, piece.fabric]);
   const hl = useIsHighlighted(piece.productId);
+  const product = useStore((s) => s.productsById[piece.productId]);
+  // riktigt tyg: färg och mönster ur produktfotot
+  useEffect(() => {
+    const url = product?.tryOnImage || product?.images?.[0];
+    if (!url) return;
+    let alive = true;
+    const crop = { upper: [0.38, 0.3, 0.24, 0.22], outer: [0.36, 0.32, 0.28, 0.24], lower: [0.3, 0.3, 0.16, 0.24], skirt: [0.36, 0.2, 0.28, 0.24], full: [0.38, 0.38, 0.24, 0.22] }[piece.type];
+    productSwatch(url, crop).then(({ texture }) => {
+      if (!alive) return;
+      const t = texture.clone();
+      t.needsUpdate = true;
+      t.repeat.set(3, 3);
+      m.map = t;
+      m.color.set('#ffffff');
+      m.needsUpdate = true;
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [product, m, piece.type]);
   useEffect(() => {
     m.emissive.set(hl ? '#ffffff' : '#000000');
     m.emissiveIntensity = hl ? 0.12 : 0;

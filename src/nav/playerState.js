@@ -9,6 +9,12 @@ export const player = {
   z: PLAYER.start.z,
   yaw: PLAYER.start.yaw,
   pitch: PLAYER.start.pitch,
+  /** 0 = entréplan, 1 = övre plan (på rulltrappan: den våning man senast stod på). */
+  level: 0,
+  /** 'floor' eller 'ramp' (på rulltrappan) */
+  mode: 'floor',
+  /** golvhöjd under fötterna */
+  y: 0,
 };
 
 /** Inmatning från tangentbord och virtuell joystick. */
@@ -20,5 +26,5 @@ export const input = {
 };
 
 export function resetPlayer() {
-  Object.assign(player, { x: PLAYER.start.x, z: PLAYER.start.z, yaw: PLAYER.start.yaw, pitch: PLAYER.start.pitch });
+  Object.assign(player, { x: PLAYER.start.x, z: PLAYER.start.z, yaw: PLAYER.start.yaw, pitch: PLAYER.start.pitch, level: 0, mode: 'floor', y: 0 });
 }

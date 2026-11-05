@@ -11,7 +11,14 @@ export const COLOR_HEX = {
   smaragd: '#1f5c4a', cognac: '#8a4f2a', rosa: '#e7b9b6', brun: '#5a3d2b', röd: '#a4262c',
   oliv: '#6b6b45', blå: '#4f6f9a', ljusgrå: '#cfcdc8', mörkgrå: '#4a4a4a', creme: '#efe6d4',
   krämvit: '#efe8dc', ljusrosa: '#efd0cc', vinröd: '#6e1f2a', 'mörk denim': '#2c3e5c', 'denimblå': '#5f7fa6',
-  khaki: '#a39a72', sand: '#d6c4a3', turkos: '#3f9a96', orange: '#d9783a', mint: '#bfe0cf', grön: '#3f6b4a', gul: '#e4c86a', lila: '#8a6f9e', silver: '#c0c0c0', guld: '#c9a84f',
+  khaki: '#a39a72',
+  // engelska namn (används i ginatricot.com:s produktdata)
+  black: '#1d1d1f', white: '#f4f2ee', 'off white': '#ece6da', offwhite_en: '#ece6da', cream: '#efe6d4', beige: '#d8c7ae',
+  brown: '#5a3d2b', 'dark brown': '#3e2a1e', camel: '#b98a5a', grey: '#9b9b9b', gray: '#9b9b9b', 'light grey': '#cfcdc8', 'dark grey': '#4a4a4a',
+  'grey melange': '#b3b1ad', blue: '#4f6f9a', 'light blue': '#a9c1d9', 'dark blue': '#2f4466', navy: '#24304a', 'mid blue': '#5f7fa6',
+  denim: '#5f7fa6', 'light denim': '#9db6cf', 'dark denim': '#2c3e5c', green: '#3f6b4a', 'dark green': '#24412f', olive: '#6b6b45',
+  pink: '#e7b9b6', 'light pink': '#efd0cc', red: '#a4262c', burgundy: '#6e1f2a', purple: '#8a6f9e', yellow: '#e4c86a', gold: '#c9a84f',
+  leopard: '#a8784a', multicolor: '#b09a8a', print: '#b09a8a', 'beige/brown': '#b79a7a', sand: '#d6c4a3', turkos: '#3f9a96', orange: '#d9783a', mint: '#bfe0cf', grön: '#3f6b4a', gul: '#e4c86a', lila: '#8a6f9e', silver: '#c0c0c0', guld: '#c9a84f',
 };
 
 export function colorName(c) {

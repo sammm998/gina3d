@@ -12,7 +12,7 @@
  *
  * Rotation: 0 = möbelns framsida mot +z (mot entrén), PI/2 = mot +x, -PI/2 = mot −x, PI = mot −z.
  */
-import { STORE } from './storeConfig.js';
+import { FLOOR_H, STORE } from './storeConfig.js';
 
 const R0 = 0;
 const FACE_X = Math.PI / 2;     // framsida mot +x (står mot vänster vägg)
@@ -166,6 +166,19 @@ function photo(id, wall, along, y, w, h, image) {
   return { id, type: 'photo', zone: null, x: p[0], z: p[1], rot: p[2], y, w, h, image, colliders: [] };
 }
 
+/**
+ * Flyttar möbler till en annan våning: produktplatserna lyfts med våningshöjden
+ * (möblerna själva ritas med y-förskjutning i fixtures/index.jsx).
+ */
+function onLevel(level, list) {
+  const dy = level * FLOOR_H;
+  for (const f of list) {
+    f.level = level;
+    for (const slot of f.slots ?? []) slot.pos = [slot.pos[0], slot.pos[1] + dy, slot.pos[2]];
+  }
+  return list;
+}
+
 // ---------------------------------------------------------------- layout
 
 const { minX, maxX, minZ } = STORE;
@@ -212,23 +225,18 @@ export const FIXTURES = [
   table('tb-a1', 'accessories', 5.1, -2.2, R0, { w: 1.6, pool: 'accessories' }),
   table('tb-a2', 'accessories', 2.2, 2.1, R0, { w: 1.4, pool: 'new' }),
 
-  // --- Klänningar: väggsektioner till höger, ställning och en skyltdocka
-  wallBay('wb-k1', 'dresses', maxX, -1.4, FACE_NX),
-  wallBay('wb-k2', 'dresses', maxX, 1.4, FACE_NX),
-  freeRail('fr-k1', 'dresses', 9.2, -0.3, FACE_X, { length: 1.8 }),
-  { id: 'pl-k1', type: 'roundPlatform', zone: 'dresses', x: 9.3, z: 2.55, rot: 0, r: 0.45, h: 0.12, colliders: [{ circle: [9.3, 2.55, 0.47] }], map: { circle: [9.3, 2.55, 0.45] } },
-  mannequin('mq-7', 'dresses', 9.3, 2.55, 0.3, ['full'], 0.12),
+  // --- Rulltrappsområdet: skärm och växt bredvid trapporna (själva trappan: fixtures/Escalator.jsx)
+  screen('scr-4', 'escalator', 8.15, 0.6, FACE_X, { images: [2, 1, 3, 0] }),
+  plant('plant-6', 'escalator', 8.2, -2.7, 1),
   photo('ph-3', 'right', 0, 2.62, 1.6, 1.05, 4),
 
   // --- Ytterkläder: bakväggen till höger
-  wallBay('wb-y1', 'outerwear', 2.45, minZ, R0),
-  wallBay('wb-y2', 'outerwear', 5.15, minZ, R0),
-  wallBay('wb-y3', 'outerwear', 7.85, minZ, R0),
-  wallBay('wb-y4', 'outerwear', 10.55, minZ, R0),
-  freeRail('fr-y1', 'outerwear', 6.4, -5.1, R0, { length: 2.0 }),
-  photo('ph-4', 'back', 3.8, 2.62, 1.55, 1.03, 0),
-  photo('ph-5', 'back', 9.2, 2.62, 1.55, 1.03, 1),
-  plant('plant-3', 'outerwear', maxX - 0.5, -3.9, 1),
+  wallBay('wb-y1', 'outerwear', 1.4, minZ, R0),
+  wallBay('wb-y2', 'outerwear', 4.1, minZ, R0),
+  wallBay('wb-y3', 'outerwear', 6.8, minZ, R0),
+  freeRail('fr-y1', 'outerwear', 5.4, -5.0, R0, { length: 2.0 }),
+  photo('ph-4', 'back', 2.75, 2.62, 1.55, 1.03, 0),
+  photo('ph-5', 'back', 5.45, 2.62, 1.55, 1.03, 1),
 
   // --- Kassa & provrum
   { id: 'fitting', type: 'fittingRooms', zone: 'checkout', x: -5.5, z: minZ, rot: 0, w: 2.8, d: 1.3, colliders: [{ rect: [-6.95, minZ, -4.05, minZ + 1.32] }], map: { rect: [-6.9, minZ, -4.1, minZ + 1.3] } },
@@ -237,4 +245,45 @@ export const FIXTURES = [
   { id: 'wall-logo', type: 'wallLogo', zone: 'checkout', x: -1.5, z: minZ + 0.012, y: 2.55, rot: 0, width: 2.2, colliders: [] },
   plant('plant-4', 'checkout', -6.55, -3.95, 0.95),
   plant('plant-5', 'checkout', -0.35, minZ + 0.45, 0.85),
+
+  // ================================================================ ÖVRE PLAN (level 1)
+  ...onLevel(1, [
+    // --- Klänningar: vänstervägg och bakvägg med klädstänger, ställningar och skyltdockor
+    wallBay('u-wb-k1', 'dresses', minX, -5.5, FACE_X),
+    wallBay('u-wb-k2', 'dresses', minX, -2.8, FACE_X),
+    wallBay('u-wb-k3', 'dresses', minX, -0.1, FACE_X),
+    wallBay('u-wb-k4', 'dresses', minX, 2.6, FACE_X),
+    wallBay('u-wb-k5', 'dresses', -9.6, minZ, R0),
+    wallBay('u-wb-k6', 'dresses', -6.9, minZ, R0),
+    wallBay('u-wb-k7', 'dresses', -4.2, minZ, R0),
+    wallBay('u-wb-k8', 'dresses', -1.5, minZ, R0),
+    freeRail('u-fr-k1', 'dresses', -8.6, 0.6, FACE_X, { length: 1.8 }),
+    freeRail('u-fr-k2', 'dresses', -5.6, 3.6, R0, { length: 1.8 }),
+    { id: 'u-pl-k1', type: 'roundPlatform', zone: 'dresses', x: -5.4, z: -1.6, rot: 0, r: 0.95, h: 0.12, colliders: [{ circle: [-5.4, -1.6, 0.97] }], map: { circle: [-5.4, -1.6, 0.95] } },
+    mannequin('u-mq-1', 'dresses', -5.75, -1.6, 0.35, ['full'], 0.12),
+    mannequin('u-mq-2', 'dresses', -5.05, -1.6, -0.35, ['full'], 0.12),
+    podium('u-pod-k1', 'dresses', -2.4, 0.6),
+    photo('u-ph-1', 'left', 5.6, 1.75, 1.3, 1.9, 2),
+    plant('u-plant-1', 'dresses', minX + 0.55, 6.9, 1.15),
+    plant('u-plant-2', 'dresses', -0.4, minZ + 0.5, 0.95),
+
+    // --- Fest & nyheter: bakvägg, podier, bord och skyltdockor vid rulltrappan
+    wallBay('u-wb-p1', 'party', 1.4, minZ, R0, { pool: 'new' }),
+    wallBay('u-wb-p2', 'party', 4.1, minZ, R0, { pool: 'new' }),
+    wallBay('u-wb-p3', 'party', 6.8, minZ, R0, { pool: 'new' }),
+    wallBay('u-wb-p4', 'party', 9.5, minZ, R0, { pool: 'new' }),
+    podium('u-pod-p1', 'party', 2.6, 1.0, { pool: 'new' }),
+    podium('u-pod-p2', 'party', 5.6, -1.4, { pool: 'new' }),
+    table('u-tb-p1', 'party', 3.6, 4.7, R0, { w: 1.7, pool: 'accessories' }),
+    platform('u-win-1', 'party', 7.3, 5.3, { w: 3.2, d: 0.95 }),
+    mannequin('u-mq-3', 'party', 6.3, 5.3, 0.2, ['outer', 'lower'], 0.12),
+    mannequin('u-mq-4', 'party', 7.3, 5.3, 0, ['full'], 0.12),
+    mannequin('u-mq-5', 'party', 8.3, 5.3, -0.2, ['upper', 'skirt'], 0.12),
+    screen('u-scr-1', 'party', 11.6, 5.6, FACE_NX, { images: [0, 3, 1, 2] }),
+    // lodrät logotyp ovanför rulltrapporna, som i butikens referensbild
+    { id: 'u-logo', type: 'wallLogo', zone: 'party', x: maxX - 0.012, z: -0.9, y: 1.85, rot: FACE_NX, width: 3.0, vertical: true, colliders: [] },
+    photo('u-ph-2', 'right', 4.1, 1.75, 1.2, 1.7, 3),
+    plant('u-plant-3', 'party', maxX - 0.55, 6.9, 1.15),
+    plant('u-plant-4', 'party', 0.6, 6.9, 1.0),
+  ]),
 ];

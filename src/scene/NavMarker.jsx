@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useStore } from '../state/useStore.js';
+import { FLOOR_H } from '../config/storeConfig.js';
 
 /** Ring på golvet som visar vart man är på väg. */
 export default function NavMarker() {
@@ -14,7 +15,7 @@ export default function NavMarker() {
       return;
     }
     m.visible = true;
-    m.position.set(nav.x, 0.012, nav.z);
+    m.position.set(nav.x, (nav.level || 0) * FLOOR_H + 0.012, nav.z);
     const t = clock.elapsedTime;
     const s = 1 + Math.sin(t * 4) * 0.08;
     m.scale.set(s, s, s);

@@ -23,7 +23,7 @@ export function useTourController() {
       return;
     }
     const v = zone.viewpoint;
-    navId.current = useStore.getState().navigateTo(v.x, v.z, v.lookAt);
+    navId.current = useStore.getState().navigateTo(v.x, v.z, v.lookAt, zone.level || 0);
     useStore.getState().setTour({ caption: `${zone.name} – ${zone.tour}` });
   }, [tour.active, tour.step]);
 

@@ -168,13 +168,13 @@ export function WallText({ f }) {
   );
 }
 
-/** Logotyp direkt på väggen (svart på vitt). */
+/** Logotyp direkt på väggen (svart på vitt). vertical = läses uppifrån och ned. */
 export function WallLogo({ f }) {
   const tex = useLogoTexture({ height: 256 });
   if (!tex) return null;
   const h = f.width / (tex.userData.aspect || 4);
   return (
-    <mesh position={[f.x, f.y, f.z]} rotation-y={f.rot} raycast={() => null}>
+    <mesh position={[f.x, f.y, f.z]} rotation={[0, f.rot, f.vertical ? -Math.PI / 2 : 0]} raycast={() => null}>
       <planeGeometry args={[f.width, h]} />
       <meshBasicMaterial map={tex} transparent toneMapped={false} depthWrite={false} />
     </mesh>

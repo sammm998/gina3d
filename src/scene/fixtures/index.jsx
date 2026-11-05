@@ -4,7 +4,8 @@ import { FreeRail, WallBay } from './Rails.jsx';
 import { DigitalScreen, FittingRooms, FramedPhoto, Plant, TryOnMirror, WallLogo, WallText } from './Decor.jsx';
 import Mannequin from './Mannequin.jsx';
 import ModelOrFallback from '../ModelOrFallback.jsx';
-import { MODELS } from '../../config/storeConfig.js';
+import { FLOOR_H, MODELS } from '../../config/storeConfig.js';
+import Escalator from './Escalator.jsx';
 
 /**
  * Mappning typ -> komponent. Lägg till en ny möbeltyp genom att skriva en
@@ -34,16 +35,18 @@ const GLB_KEYS = { mannequin: 'mannequin', plant: 'plant', podium: 'podium', scr
 export default function Fixtures({ outfits = {}, eventsFor }) {
   return (
     <group>
+      <Escalator />
       {FIXTURES.map((f) => {
+        const lift = (f.level || 0) * FLOOR_H;
         const glb = GLB_KEYS[f.type] && MODELS[GLB_KEYS[f.type]];
         if (f.type === 'mannequin') {
           const fallback = <Mannequin f={f} outfit={outfits[f.id]} eventsFor={eventsFor} />;
-          return glb ? <ModelOrFallback key={f.id} url={glb} f={f} fallback={fallback} /> : <group key={f.id}>{fallback}</group>;
+          return <group key={f.id} position-y={lift}>{glb ? <ModelOrFallback url={glb} f={f} fallback={fallback} /> : fallback}</group>;
         }
         const C = FIXTURE_COMPONENTS[f.type];
         if (!C) return null;
         const el = <C f={f} />;
-        return glb ? <ModelOrFallback key={f.id} url={glb} f={f} fallback={el} /> : <group key={f.id}>{el}</group>;
+        return <group key={f.id} position-y={lift}>{glb ? <ModelOrFallback url={glb} f={f} fallback={el} /> : el}</group>;
       })}
     </group>
   );

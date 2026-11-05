@@ -39,20 +39,28 @@ export function placeProducts(products, fixtures) {
     // accessoarbord: övre nivån visar väskor i stället för vikta plagg
     if (f.pool === 'accessories') list = accessories;
     if (!list.length) list = kind === 'fold' ? garments.filter(isFoldable) : garments;
+    // framåtvända plagg kräver en frilagd bild för att se riktiga ut
+    if (kind === 'faceout') {
+      const cut = list.filter((p) => p.tryOnImage);
+      if (cut.length) list = cut;
+    }
     return list;
   };
 
   const out = { folds: [], faceouts: [], sides: [], accessories: [], outfits: {}, spots: {} };
 
+  let curLevel = 0;
   const remember = (p, slot) => {
     if (!p || out.spots[p.id]) return;
+    const level = curLevel;
     // Stå ~1,3 m framför produkten och titta mot den.
     const r = slot.rot || 0;
     const [x, , z] = slot.pos;
-    out.spots[p.id] = { x: x + Math.sin(r) * 1.3, z: z + Math.cos(r) * 1.3, lookAt: [x, z] };
+    out.spots[p.id] = { x: x + Math.sin(r) * 1.3, z: z + Math.cos(r) * 1.3, lookAt: [x, z], level };
   };
 
   for (const f of fixtures) {
+    curLevel = f.level || 0;
     for (const slot of f.slots ?? []) {
       const key = `${f.pool || f.zone}:${slot.kind}`;
       if (slot.kind === 'mannequin') {
@@ -97,7 +105,7 @@ export function placeProducts(products, fixtures) {
         out.sides.push({ slot, fixture: f, items });
         continue;
       }
-      const p = next(key, poolFor(f, slot.kind));
+      const p = next(`${key}:${slot.kind}`, poolFor(f, slot.kind));
       if (!p) continue;
       remember(p, slot);
       const entry = { slot, fixture: f, product: p };

@@ -66,11 +66,11 @@ export const useStore = create((set, get) => ({
   // --- navigering
   pointerLocked: false,
   setPointerLocked: (pointerLocked) => set({ pointerLocked }),
-  /** Senaste förfrågan om att gå någonstans: { id, x, z, lookAt?: [x, z] } */
+  /** Senaste förfrågan om att gå någonstans: { id, x, z, lookAt?: [x, z], level? } */
   nav: null,
-  navigateTo: (x, z, lookAt = null) => {
+  navigateTo: (x, z, lookAt = null, level = undefined) => {
     const id = ++navCounter;
-    set({ nav: { id, x, z, lookAt } });
+    set({ nav: { id, x, z, lookAt, level } });
     return id;
   },
   cancelNav: () => set({ nav: null }),

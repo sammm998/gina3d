@@ -7,6 +7,8 @@
  *               { x, z, lookAt: [x, z] }
  * - tour:       text som visas under den guidade turen
  *
+ * - level:      0 = entréplan, 1 = övre plan (nås med rulltrappan)
+ *
  * Lägg till en ny zon genom att lägga till ett objekt här och möbler med samma
  * `zone`-id i src/config/fixtures.js. Se README.
  */
@@ -48,13 +50,33 @@ export const ZONES = [
     tour: 'Väskor, skor och accessoarer som gör looken komplett.',
   },
   {
+    id: 'escalator',
+    name: 'Rulltrappa',
+    color: '#e4e4e2',
+    rect: [7, -3.5, 12.5, 3.5],
+    categories: [],
+    viewpoint: { x: 8.3, z: -4.3, lookAt: [10.4, 2.5] },
+    tour: 'Rulltrappan tar dig upp till klänningar, fest och nyheter.',
+  },
+  {
     id: 'dresses',
+    level: 1,
     name: 'Klänningar',
     color: '#f0e6e3',
-    rect: [7, -3.5, 12.5, 3.5],
+    rect: [-12.5, -7.5, 0, 7.5],
     categories: ['dresses', 'skirts'],
-    viewpoint: { x: 8.0, z: 2.6, lookAt: [12.4, -0.5] },
-    tour: 'Klänningar och kjolar för både vardag och fest.',
+    viewpoint: { x: -1.5, z: 4.6, lookAt: [-8, -3] },
+    tour: 'Övre plan: klänningar och kjolar för både vardag och fest.',
+  },
+  {
+    id: 'party',
+    level: 1,
+    name: 'Fest & nyheter',
+    color: '#ece6dc',
+    rect: [0, -7.5, 12.5, 7.5],
+    categories: [],
+    viewpoint: { x: 3.0, z: 4.8, lookAt: [6, -4] },
+    tour: 'Säsongens nyheter och festplagg – direkt vid rulltrappan.',
   },
   {
     id: 'outerwear',
@@ -62,7 +84,7 @@ export const ZONES = [
     color: '#e7e3da',
     rect: [0, -7.5, 12.5, -3.5],
     categories: ['outerwear', 'jackets', 'coats'],
-    viewpoint: { x: 6.2, z: -2.6, lookAt: [6.2, -7.4] },
+    viewpoint: { x: 4.1, z: -2.6, lookAt: [4.1, -7.4] },
     tour: 'Kappor, trenchcoats och jackor inför säsongen.',
   },
   {
@@ -77,12 +99,16 @@ export const ZONES = [
 ];
 
 /** Ordningen för den guidade turen. */
-export const TOUR_ORDER = ['entrance', 'tops', 'denim', 'checkout', 'outerwear', 'dresses', 'accessories'];
+export const TOUR_ORDER = ['entrance', 'tops', 'denim', 'checkout', 'outerwear', 'accessories', 'dresses', 'party'];
 
 /** Hittar vilken zon en produktkategori hör till. */
 export function zoneForCategory(category) {
   const c = String(category || '').toLowerCase();
   return ZONES.find((z) => z.categories.includes(c))?.id ?? 'tops';
+}
+
+export function zonesOnLevel(level) {
+  return ZONES.filter((z) => (z.level || 0) === level);
 }
 
 export function zoneById(id) {

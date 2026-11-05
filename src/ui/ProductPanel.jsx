@@ -99,7 +99,7 @@ export default function ProductPanel() {
   const showInStore = () => {
     const spot = useStore.getState().productSpots[product.id];
     if (!spot) return;
-    useStore.getState().navigateTo(spot.x, spot.z, spot.lookAt);
+    useStore.getState().navigateTo(spot.x, spot.z, spot.lookAt, spot.level);
     if (window.innerWidth < 700) select(null);
   };
 

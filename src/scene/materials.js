@@ -15,6 +15,7 @@ export const MAT = {
   white: new THREE.MeshStandardMaterial({ color: '#fbfbf9', roughness: 0.6 }),
   oak: new THREE.MeshStandardMaterial({ color: '#d4bf9f', roughness: 0.7 }),
   mannequin: new THREE.MeshStandardMaterial({ color: '#f4f3f0', roughness: 0.38 }),
+  ceiling: new THREE.MeshStandardMaterial({ color: '#fbfbfa', roughness: 1 }),
   facadeBand: new THREE.MeshStandardMaterial({ color: '#f2f1ee', roughness: 0.85 }),
   glass: new THREE.MeshStandardMaterial({
     color: '#dfe9ea', roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.14,
