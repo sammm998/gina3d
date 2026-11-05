@@ -358,18 +358,24 @@ export async function productUrlsFromSitemap(indexUrl, { verbose = false } = {})
 /** Vilken butikskategori en produkt-URL hör till (svenska URL-delar på ginatricot.com). */
 const URL_CATEGORIES = [
   ['jeans', /\/klader\/jeans\//],
-  ['dresses', /\/klader\/klanningar\//],
+  ['dresses', /\/klader\/kl[aä]nningar\//],
   ['skirts', /\/klader\/kjolar\//],
-  ['outerwear', /\/klader\/(jackor|kappor|ytterklader|blazers|kavajer|jackor-kappor)[/-]/],
-  ['tops', /\/klader\/(toppar|trojor|skjortor|blusar|skjortor-blusar|t-shirts|linnen)[/-]/],
-  ['bags', /\/accessoarer\/vaskor\//],
+  ['outerwear', /\/klader\/(jackor|kappor|ytterkl[aä]der|blazers?|kavajer|jackor-kappor|rockar)[/-]/],
+  ['tops', /\/klader\/(toppar|tr[oö]jor|skjortor|blusar|skjortor-blusar|t-shirts|linnen)[/-]/],
+  ['bags', /\/accessoarer\/v[aä]skor\//],
   ['shoes', /\/accessoarer\/skor\//],
 ];
-const EXCLUDE = /young|miss-y|underklader|badklader|strumpor|pyjamas|sovplagg|slippers|tofflor/;
+const EXCLUDE = /young|miss-y|underkl|badkl|strumpor|pyjamas|sovplagg|slippers|tofflor/;
+
+const pathOf = (u) => {
+  try { return decodeURIComponent(new URL(u).pathname).toLowerCase(); } catch { return ''; }
+};
+/** Produktsidor slutar med ett artikelnummer, t.ex. .../straight-jeans-213456789 */
+const isProductUrl = (u) => /-\d{6,}$/.test(pathOf(u));
 
 function categoryOfUrl(u) {
-  const p = new URL(u).pathname;
-  if (EXCLUDE.test(p)) return null;
+  const p = pathOf(u);
+  if (!isProductUrl(u) || EXCLUDE.test(p)) return null;
   return URL_CATEGORIES.find(([, re]) => re.test(p))?.[0] ?? null;
 }
 
@@ -380,13 +386,19 @@ function categoryOfUrl(u) {
 async function importFromPlan(sitemapUrl, planStr) {
   const plan = Object.fromEntries(planStr.split(',').map((kv) => kv.split(':')).map(([k, v]) => [k.trim(), Number(v) || 0]));
   const pages = await productUrlsFromSitemap(sitemapUrl);
-  console.log(`[import] sitemap: ${pages.length} adresser`);
+  console.log(`[import] sitemap: ${pages.length} adresser, ${pages.filter(isProductUrl).length} produktsidor`);
+  const freq = {};
+  for (const u of pages.filter(isProductUrl)) {
+    const k = pathOf(u).split('/').slice(2, 4).join('/');
+    freq[k] = (freq[k] || 0) + 1;
+  }
+  console.log(`[import] vanligaste sökvägar: ${Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 30).map(([k, v]) => `${k}=${v}`).join(', ')}`);
   const picked = {};
   const seenStyle = new Set();
   for (const u of pages) {
     const cat = categoryOfUrl(u);
     if (!cat || !plan[cat]) continue;
-    const slug = new URL(u).pathname.split('/').pop() || '';
+    const slug = pathOf(u).split('/').pop() || '';
     const style = slug.replace(/-\d+$/, '');
     if (seenStyle.has(style)) continue;
     // reservlista: dubbelt så många kandidater som behövs (vissa sidor kan sakna bilder)
@@ -396,6 +408,7 @@ async function importFromPlan(sitemapUrl, planStr) {
   }
   const out = [];
   const media = [];
+  console.log(`[import] kandidater: ${Object.entries(picked).map(([k, v]) => `${k}=${v.length}`).join(', ')}`);
   for (const [cat, urls] of Object.entries(picked)) {
     let ok = 0;
     for (const url of urls) {
