@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useIsHighlighted } from '../products/events.js';
 import * as THREE from 'three';
 import { MAT } from '../materials.js';
 
@@ -60,7 +61,12 @@ function Body() {
 }
 
 function Garment({ piece, eventsFor }) {
-  const m = clothMaterial(piece.color);
+  const m = useMemo(() => clothMaterial(piece.color).clone(), [piece.color]);
+  const hl = useIsHighlighted(piece.productId);
+  useEffect(() => {
+    m.emissive.set(hl ? '#ffffff' : '#000000');
+    m.emissiveIntensity = hl ? 0.12 : 0;
+  }, [hl, m]);
   const ev = eventsFor ? eventsFor(piece.productId) : {};
   const ud = { productId: piece.productId };
   switch (piece.type) {
@@ -76,7 +82,7 @@ function Garment({ piece, eventsFor }) {
               key={s}
               geometry={long ? geo.sleeveLong : geo.sleeveShort}
               material={m}
-              position={[s * (ARM_X + 0.02 + (long ? 0.025 : 0.01)), long ? 1.13 : 1.34, 0]}
+              position={[s * (ARM_X + 0.02 + (long ? 0.004 : 0.008)), long ? 1.13 : 1.34, 0]}
               rotation-z={s * ARM_TILT}
               userData={ud}
             />

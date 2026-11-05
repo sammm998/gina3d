@@ -9,7 +9,7 @@ import Player from './Player.jsx';
 import Controls from './Controls.jsx';
 import NavMarker from './NavMarker.jsx';
 import Storefront from './Storefront.jsx';
-import Fixtures from './fixtures/index.jsx';
+import StoreContent from './StoreContent.jsx';
 import { STORE } from '../config/storeConfig.js';
 import { useStore } from '../state/useStore.js';
 
@@ -49,7 +49,7 @@ function BakedShadows() {
       position={[0, 0.003, 2.4]}
       scale={[26, 20.4]}
       resolution={1024}
-      far={1.4}
+      far={0.7}
       blur={2.4}
       opacity={0.75}
       color="#3a342c"
@@ -134,7 +134,7 @@ export default function Experience({ children }) {
       <Suspense fallback={null}>
         <Room />
         <Storefront />
-        <Fixtures />
+        <StoreContent />
         {children}
         <BakedShadows />
       </Suspense>

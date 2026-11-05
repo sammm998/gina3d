@@ -4,6 +4,7 @@ import { useStore } from '../state/useStore.js';
 import Logo from './Logo.jsx';
 import Minimap from './Minimap.jsx';
 import Joystick from './Joystick.jsx';
+import Tooltip from './Tooltip.jsx';
 import { startTour, stopTour, useTourController } from './Tour.js';
 
 function Icon({ name }) {
@@ -81,6 +82,7 @@ export default function Hud() {
       {tour.active && tour.caption && <div className="tour-caption">{tour.caption}</div>}
 
       {isTouch && <Joystick />}
+      <Tooltip />
       <Toast />
     </div>
   );
