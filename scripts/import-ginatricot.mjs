@@ -284,6 +284,9 @@ function diagnose(html, url) {
   const imgs = [...new Set([...html.matchAll(/https?:\/\/[^"'\s)]+\.(?:jpe?g|png|webp|avif)/gi)].map((m) => new URL(m[0]).host))];
   console.log(`[diag] ${url} – ${html.length} tecken, titel: ${title}`);
   console.log(`[diag] JSON-LD-typer: ${nodes.map((n) => typeOf(n).join('+')).join(', ') || 'inga'}`);
+  const prod = nodes.find((n) => typeOf(n).some((t) => /Product/.test(t)));
+  if (prod) console.log(`[diag] Product-JSON-LD: ${JSON.stringify(prod).slice(0, 2500)}`);
+  for (const m of ['og:title', 'og:image', 'og:type', 'product:price:amount', 'product:price:currency', 'description']) console.log(`[diag] meta ${m}: ${meta(html, m)}`);
   console.log(`[diag] __NEXT_DATA__: ${html.includes('__NEXT_DATA__')}, bildvärdar: ${imgs.join(', ')}`);
   console.log(`[diag] ${links.length} interna länkar, t.ex.:\n  ${links.slice(0, 120).join('\n  ')}`);
   const imgUrls = [...new Set([...html.matchAll(/https?:\/\/ginatricotpc\.imgix\.net\/[^"'\s)\\]+/gi)].map((m) => m[0]))];
@@ -292,8 +295,41 @@ function diagnose(html, url) {
   if (i > 0) console.log(`[diag] utdrag runt första produktbilden:\n${html.slice(Math.max(0, i - 1500), i + 400).replace(/\s+/g, ' ')}`);
 }
 
+const locs = (xml) => [...xml.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/g)].map((m) => decode(m[1]));
+
+/**
+ * Produkt-URL:er från sajtens sitemap (den sanktionerade vägen enligt robots.txt).
+ * Följer sitemap-index och returnerar produktsidor.
+ */
+export async function productUrlsFromSitemap(indexUrl, { verbose = false } = {}) {
+  const xml = await fetchText(indexUrl);
+  let children = xml.includes('<sitemapindex') ? locs(xml) : [];
+  if (verbose) console.log(`[sitemap] ${indexUrl}: ${children.length} under-sitemaps\n  ${children.slice(0, 30).join('\n  ')}`);
+  let pages = children.length ? [] : locs(xml);
+  const productMaps = children.filter((u) => /product|produkt|pdp|article/i.test(u));
+  for (const u of (productMaps.length ? productMaps : children).slice(0, 6)) {
+    try {
+      const sub = locs(await fetchText(u));
+      if (verbose) console.log(`[sitemap] ${u}: ${sub.length} adresser, t.ex.\n  ${sub.slice(0, 15).join('\n  ')}`);
+      pages.push(...sub);
+    } catch (e) {
+      console.log(`[sitemap] ${u}: ${e.message}`);
+    }
+  }
+  return pages;
+}
+
 /** Läge för byggservern (t.ex. Railway): styrs av miljövariabler och fäller aldrig bygget. */
 async function fromEnv() {
+  if (process.env.GT_SITEMAP) {
+    try {
+      const pages = await productUrlsFromSitemap(process.env.GT_SITEMAP, { verbose: true });
+      const sample = pages.filter((u) => /\/se\//.test(u)).slice(0, 2);
+      for (const u of sample) diagnose(await fetchText(u), u);
+    } catch (e) {
+      console.log(`[sitemap] fel: ${e.message}`);
+    }
+  }
   const discover = process.env.GT_DISCOVER;
   const cats = (process.env.GT_IMPORT || '').split(/[\s,]+/).filter(Boolean);
   if (!discover && !cats.length) return;
