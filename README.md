@@ -92,7 +92,7 @@ kopierar dem till `dist/` vid build. Byggda JS/CSS-filer hamnar i `dist/_app/`.
 
 ## Byta logotyp
 
-Lägg varumärkets logotyp som **`assets/ginatricot-logo.svg`**. Den används på startskärmen,
+Varumärkets logotyp ligger i **`assets/ginatricot-logo.png`** (`PATHS.logo` i `src/config/storeConfig.js`; byt till en `.svg` om du har en vektorversion). Den används på startskärmen,
 i gränssnittets övre hörn, på den belysta skylten ovanför entrén och på väggen bakom kassan.
 Koden ritar inte logotypen själv. Saknas filen visas en neutral platshållare
 (`assets/logo-placeholder.svg`).
@@ -101,7 +101,30 @@ Koden ritar inte logotypen själv. Saknas filen visas en neutral platshållare
   och gärna `width` och `height` så att proportionerna blir rätt.
 - Vill du använda ett annat filnamn ändrar du `PATHS.logo` i `src/config/storeConfig.js`.
 
-## Importera riktiga produkter från ginatricot.com
+## Deploy (Railway) och riktiga produkter
+
+Sajten körs på Railway (projektet **gina3d**, tjänsten **gina3d-web**, gren `main`):
+https://gina3d-web-production.up.railway.app
+
+`railway.json` bygger med `npm run build` och startar `npm start` (`server.mjs` servar `dist/`).
+Bygget hämtar riktiga produkter från ginatricot.com innan `vite build`, styrt av
+miljövariabler på tjänsten:
+
+| Variabel | Exempel | Effekt |
+|---|---|---|
+| `GT_SITEMAP` | `https://www.ginatricot.com/market_sitemaps/se/sitemap.xml` | sajtens sitemap (tillåten enligt robots.txt) |
+| `GT_IMPORT_PLAN` | `tops:6,jeans:5,dresses:7,skirts:2,outerwear:5,bags:3,shoes:2` | antal produkter per kategori |
+| `GT_DEBUG` | `1` | skriver ut bildanalysen i byggloggen |
+| `PORT` | `8080` | serverns port |
+
+Importen läser produktsidornas strukturerade data (JSON-LD: namn, pris, färg, material,
+bilder), laddar ner bilderna, hittar den bild som är en ren produktbild (ingen hud, jämn
+bakgrund), frilägger den till `tryOnImage` och uppskattar ankarpunkter för AR-provningen.
+Modellfotona används i produktpanelen, på de digitala skärmarna och i tavlorna
+(`data/media.json`). Misslyckas importen behålls platshållarna – bygget fäller aldrig.
+De importerade bilderna finns bara i det byggda resultatet, inte i git.
+
+## Importera riktiga produkter från ginatricot.com (lokalt)
 
 `scripts/import-ginatricot.mjs` hämtar riktiga produkter (namn, pris, valuta, färger, storlekar,
 bilder och länk) direkt från produktsidorna och skriver `data/products.json`. Skriptet läser
@@ -248,6 +271,18 @@ npx @gltf-transform/cli optimize in.glb out.glb --texture-compress webp
 ```
 
 ---
+
+## Två våningar och rulltrappor
+
+Butiken har **entréplan** (entré, denim, toppar, accessoarer, ytterkläder, kassa) och
+**övre plan** (klänningar, fest & nyheter), 4 m golv till golv (`FLOOR_H`). Rulltrapporna
+upp och ned längs högerväggen konfigureras i `ESCALATOR` i `src/config/storeConfig.js`
+(position, längd, hastighet) och schaktet i `VOID`. Man åker automatiskt när man kliver på;
+klick på golvet, kartan, zonhopp och den guidade turen planerar vägen över båda våningarna.
+Minikartan har en våningsväljare.
+
+Möbler på övre plan läggs i `onLevel(1, [...])` i `src/config/fixtures.js`, och zoner får
+`level: 1` i `src/config/zones.js`.
 
 ## Navigering
 

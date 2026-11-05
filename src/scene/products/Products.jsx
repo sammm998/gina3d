@@ -431,7 +431,30 @@ function AccessoryGroup({ productId, list }) {
   );
 }
 
-function Accessories({ entries }) {
+/** Riktig produkt (frilagd bild) stående på podiet – används när tryOnImage finns. */
+function CutoutAccessory({ entry, index }) {
+  const p = entry.product;
+  const [x, y, z] = entry.slot.pos;
+  const tex = useLazyTexture(p.tryOnImage, entry.slot.pos, 14);
+  const hl = useIsHighlighted(p.id);
+  const ev = useMemo(() => productEvents(p.id), [p.id]);
+  const kind = accessoryKind(p);
+  const h = kind === 'shoes' ? 0.17 : kind === 'tote' ? 0.36 : 0.3;
+  const aspect = tex?.image ? tex.image.width / tex.image.height : 1;
+  const r = rng(index + 301);
+  if (!tex) return null;
+  return (
+    <mesh position={[x, y + h / 2 + 0.004, z]} rotation-y={entry.slot.rot + (r() - 0.5) * 0.4} scale={hl ? 1.04 : 1} userData={{ productId: p.id }} {...ev}>
+      <planeGeometry args={[h * aspect, h]} />
+      <meshStandardMaterial map={tex} alphaTest={0.4} side={THREE.DoubleSide} roughness={0.6} emissive={hl ? '#ffffff' : '#000000'} emissiveIntensity={hl ? 0.1 : 0} />
+    </mesh>
+  );
+}
+
+/** Importerade produkter med frilagd bild visas som riktiga produkter; övriga som 3D-modeller. */
+function Accessories({ entries: all }) {
+  const cutouts = useMemo(() => all.filter((en) => en.product.tryOnImage?.includes('/products/ginatricot/')), [all]);
+  const entries = useMemo(() => all.filter((en) => !cutouts.includes(en)), [all, cutouts]);
   const groups = useMemo(() => {
     const g = {};
     entries.forEach((en, i) => {
@@ -440,7 +463,12 @@ function Accessories({ entries }) {
     });
     return g;
   }, [entries]);
-  return Object.entries(groups).map(([id, list]) => <AccessoryGroup key={id} productId={id} list={list} />);
+  return (
+    <>
+      {Object.entries(groups).map(([id, list]) => <AccessoryGroup key={id} productId={id} list={list} />)}
+      {cutouts.map((en, i) => <CutoutAccessory key={`${en.product.id}-${i}`} entry={en} index={i} />)}
+    </>
+  );
 }
 
 /* ------------------------------------------------------------------ export */
