@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { FLOOR_H, STORE, VOID } from '../config/storeConfig.js';
+import { FLOOR_H, LEVELS, STORE, TOP_Y, ceilingHoleOf, floorHoleOf } from '../config/storeConfig.js';
 import { useStore } from '../state/useStore.js';
 import { floorTexture, glowTexture, mallFloorTexture } from './textures.js';
 import { MAT } from './materials.js';
@@ -9,10 +9,11 @@ import { MAT } from './materials.js';
 const { minX, maxX, minZ, maxZ, height: H, door } = STORE;
 const W = maxX - minX;
 const D = maxZ - minZ;
-const TOP = FLOOR_H + H; // övre planets tak
-const MALL_H = 8.6; // gallerians takhöjd (två våningar)
+const TOP = TOP_Y; // översta taket
+const MALL_H = TOP_Y + 1.1; // gallerians takhöjd (tre våningar)
+const NL = LEVELS.length;
 
-const inVoid = (x, z, m = 0.3) => x > VOID.minX - m && x < VOID.maxX + m && z > VOID.minZ - m && z < VOID.maxZ + m;
+const inHole = (holes, x, z, m = 0.3) => holes.some((V) => x > V.minX - m && x < V.maxX + m && z > V.minZ - m && z < V.maxZ + m);
 
 /** Rutnät av infällda spotlights i taket (delas med ljuskäglorna på golvet). */
 export const SPOTS = (() => {
@@ -22,10 +23,13 @@ export const SPOTS = (() => {
   }
   return pts;
 })();
-const SPOTS_OPEN = SPOTS.filter(([x, z]) => !inVoid(x, z));
+/** Spotlights i taket på en våning (inga över hålen). */
+const spotsFor = (level, every = 1) =>
+  SPOTS.filter(([x, z], i) => i % every === 0 && !inHole([...ceilingHoleOf(level), ...floorHoleOf(level)], x, z));
 
-/** Fyra rektanglar runt ett hål: [x0, z0, x1, z1]. */
+/** Fyra rektanglar runt ett hål: [x0, z0, x1, z1]. Inget hål → hela ytan. */
 function rectsAround(hole) {
+  if (!hole) return [[minX, minZ, maxX, maxZ]];
   return [
     [minX, minZ, maxX, hole.minZ],
     [minX, hole.maxZ, maxX, maxZ],
@@ -54,11 +58,22 @@ function useFloorClick(level) {
   };
 }
 
+function FloorLevel({ level, mat }) {
+  const onClick = useFloorClick(level);
+  const geoms = useMemo(() => rectsAround(floorHoleOf(level)[0]).map((r) => planeGeom(r, 3.2)), [level]);
+  return (
+    <group position-y={level * FLOOR_H}>
+      {geoms.map((g, i) => (
+        <mesh key={i} geometry={g} material={mat} onClick={onClick} userData={{ walkable: true, level }} />
+      ))}
+    </group>
+  );
+}
+
 function Floors() {
   const gl = useThree((s) => s.gl);
   const quality = useStore((s) => s.quality);
   const click0 = useFloorClick(0);
-  const click1 = useFloorClick(1);
   const tex = useMemo(() => {
     const t = floorTexture(gl.capabilities.getMaxAnisotropy()).clone();
     t.needsUpdate = true;
@@ -70,22 +85,14 @@ function Floors() {
     t.repeat.set(50 / 1.2, 7 / 1.2);
     return t;
   }, [gl]);
-  const mat = useMemo(
-    () => new THREE.MeshStandardMaterial({ map: tex, color: '#dcdbd7', metalness: 0 }),
-    [tex]
-  );
+  const mat = useMemo(() => new THREE.MeshStandardMaterial({ map: tex, color: '#dcdbd7', metalness: 0 }), [tex]);
   mat.roughness = quality === 'high' ? 0.3 : 0.42;
   mat.envMapIntensity = quality === 'high' ? 0.55 : 0.35;
-  const ground = useMemo(() => planeGeom([minX, minZ, maxX, maxZ], 3.2), []);
-  const upper = useMemo(() => rectsAround(VOID).map((r) => planeGeom(r, 3.2)), []);
   return (
     <group>
-      <mesh geometry={ground} material={mat} onClick={click0} userData={{ walkable: true, level: 0 }} />
-      <group position-y={FLOOR_H}>
-        {upper.map((g, i) => (
-          <mesh key={i} geometry={g} material={mat} onClick={click1} userData={{ walkable: true, level: 1 }} />
-        ))}
-      </group>
+      {LEVELS.map((l) => (
+        <FloorLevel key={l.id} level={l.id} mat={mat} />
+      ))}
       <mesh rotation-x={-Math.PI / 2} position={[0, 0, maxZ + 3.5]} onClick={click0} userData={{ walkable: true, level: 0 }}>
         <planeGeometry args={[50, 7]} />
         <meshStandardMaterial map={mallTex} roughness={0.25} envMapIntensity={0.7} />
@@ -122,31 +129,38 @@ function Spots({ y, points }) {
   );
 }
 
+function SlabEdges({ V, y }) {
+  // bjälklagets kanter runt ett schakt (mellan taket och golvet ovanför)
+  return [
+    [(V.minX + V.maxX) / 2, V.minZ, V.maxX - V.minX, 0],
+    [(V.minX + V.maxX) / 2, V.maxZ, V.maxX - V.minX, Math.PI],
+    [V.minX, (V.minZ + V.maxZ) / 2, V.maxZ - V.minZ, Math.PI / 2],
+    [V.maxX, (V.minZ + V.maxZ) / 2, V.maxZ - V.minZ, -Math.PI / 2],
+  ].map(([x, z, w, r], i) => (
+    <mesh key={i} position={[x, y + H + (FLOOR_H - H) / 2, z]} rotation-y={r} material={MAT.white}>
+      <planeGeometry args={[w, FLOOR_H - H]} />
+    </mesh>
+  ));
+}
+
 function Ceilings() {
-  const ground = useMemo(() => rectsAround(VOID).map((r) => planeGeom(r, 1, false)), []);
-  const top = useMemo(() => planeGeom([minX, minZ, maxX, maxZ], 1, false), []);
-  const mat = MAT.ceiling;
+  const levels = useMemo(
+    () => LEVELS.map((l) => ({ level: l.id, geoms: rectsAround(ceilingHoleOf(l.id)[0]).map((r) => planeGeom(r, 1, false)) })),
+    []
+  );
   return (
     <group>
-      {ground.map((g, i) => (
-        <mesh key={i} geometry={g} material={mat} position-y={H} />
+      {levels.map(({ level, geoms }) => (
+        <group key={level}>
+          {geoms.map((g, i) => (
+            <mesh key={i} geometry={g} material={MAT.ceiling} position-y={level * FLOOR_H + H} />
+          ))}
+          <Spots y={level * FLOOR_H + H} points={spotsFor(level, level === NL - 1 ? 2 : 1)} />
+          {ceilingHoleOf(level).map((V, i) => (
+            <SlabEdges key={i} V={V} y={level * FLOOR_H} />
+          ))}
+        </group>
       ))}
-      <mesh geometry={top} material={mat} position-y={TOP} />
-      <Spots y={H} points={SPOTS_OPEN} />
-      <Spots y={TOP} points={SPOTS.filter((_, i) => i % 2 === 0)} />
-      {/* bjälklagets kanter i schaktet */}
-      <group>
-        {[
-          [(VOID.minX + VOID.maxX) / 2, VOID.minZ, VOID.maxX - VOID.minX, 0],
-          [(VOID.minX + VOID.maxX) / 2, VOID.maxZ, VOID.maxX - VOID.minX, Math.PI],
-          [VOID.minX, (VOID.minZ + VOID.maxZ) / 2, VOID.maxZ - VOID.minZ, Math.PI / 2],
-          [VOID.maxX, (VOID.minZ + VOID.maxZ) / 2, VOID.maxZ - VOID.minZ, -Math.PI / 2],
-        ].map(([x, z, w, r], i) => (
-          <mesh key={i} position={[x, (H + FLOOR_H) / 2, z]} rotation-y={r} material={MAT.white}>
-            <planeGeometry args={[w, FLOOR_H - H]} />
-          </mesh>
-        ))}
-      </group>
     </group>
   );
 }
@@ -156,11 +170,13 @@ function TrackLights() {
   const rails = useMemo(
     () => [
       // [x0, z, x1, y]
-      [-11.5, -6.2, -1.0, TOP],
-      [1.0, -6.2, 8.4, TOP],
-      [-11.5, 5.6, 7.5, TOP],
-      [-11.5, -1.0, 7.0, TOP],
       [-10.0, -5.6, 6.0, H],
+      [-11.5, -6.2, -1.0, FLOOR_H + H],
+      [-11.5, 5.6, 5.2, FLOOR_H + H],
+      [-11.5, -1.0, 5.2, FLOOR_H + H],
+      [-11.5, -6.2, 5.2, 2 * FLOOR_H + H],
+      [-11.5, 5.6, 11.5, 2 * FLOOR_H + H],
+      [-11.5, -1.0, 5.2, 2 * FLOOR_H + H],
     ],
     []
   );
@@ -209,7 +225,7 @@ function TrackLights() {
 function LightPools() {
   const ref = useRef();
   const tex = glowTexture();
-  const pts = useMemo(() => [...SPOTS_OPEN.map(([x, z]) => [x, 0.004, z]), ...SPOTS_OPEN.map(([x, z]) => [x, FLOOR_H + 0.004, z])], []);
+  const pts = useMemo(() => LEVELS.flatMap((l) => spotsFor(l.id).map(([x, z]) => [x, l.id * FLOOR_H + 0.006, z])), []);
   useLayoutEffect(() => {
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
@@ -241,7 +257,7 @@ function Walls() {
       <mesh position={[maxX + t / 2, WH / 2, (minZ + maxZ) / 2]} material={MAT.wall}>
         <boxGeometry args={[t, WH, D]} />
       </mesh>
-      {[0, FLOOR_H].map((y) => (
+      {LEVELS.map((l) => l.id * FLOOR_H).map((y) => (
         <group key={y} position-y={y}>
           <mesh position={[0, 0.05, minZ + 0.006]} material={MAT.baseboard}>
             <boxGeometry args={[W, 0.1, 0.012]} />
@@ -291,15 +307,19 @@ function GlassRow({ ranges, y0, y1 }) {
   );
 }
 
-/** Glasfasad i två våningar: entré med dörr nere, panoramaglas uppe och skyltband emellan. */
+/** Glasfasad i tre våningar: entré med dörr nere, panoramaglas ovanför och skyltband emellan. */
 function Facade() {
   return (
     <group>
       <GlassRow ranges={[[minX, door.minX], [door.maxX, maxX]]} y0={0} y1={H} />
-      <mesh position={[0, H + 0.75, maxZ + 0.02]} material={MAT.facadeBand}>
-        <boxGeometry args={[W + 0.4, 1.5, 0.16]} />
-      </mesh>
-      <GlassRow ranges={[[minX, maxX]]} y0={H + 1.5} y1={TOP} />
+      {LEVELS.slice(1).map((l) => (
+        <group key={l.id}>
+          <mesh position={[0, (l.id - 1) * FLOOR_H + H + 0.75, maxZ + 0.02]} material={MAT.facadeBand}>
+            <boxGeometry args={[W + 0.4, 1.5, 0.16]} />
+          </mesh>
+          <GlassRow ranges={[[minX, maxX]]} y0={(l.id - 1) * FLOOR_H + H + 1.5} y1={l.id * FLOOR_H + H} />
+        </group>
+      ))}
     </group>
   );
 }
@@ -330,10 +350,12 @@ function Mall() {
             <planeGeometry args={[9, 3.2]} />
             <meshStandardMaterial color="#c9ced1" roughness={0.15} metalness={0.1} transparent opacity={0.55} />
           </mesh>
-          <mesh position={[s * 19, 5.9, maxZ + 0.11]}>
-            <planeGeometry args={[9, 2.6]} />
-            <meshStandardMaterial color="#c9ced1" roughness={0.15} metalness={0.1} transparent opacity={0.55} />
-          </mesh>
+          {LEVELS.slice(1).map((l) => (
+            <mesh key={l.id} position={[s * 19, l.id * FLOOR_H + 1.9, maxZ + 0.11]}>
+              <planeGeometry args={[9, 2.6]} />
+              <meshStandardMaterial color="#c9ced1" roughness={0.15} metalness={0.1} transparent opacity={0.55} />
+            </mesh>
+          ))}
         </group>
       ))}
       <mesh position={[0, (TOP + MALL_H) / 2, maxZ + 0.05]}>
@@ -351,13 +373,17 @@ function Mall() {
         </mesh>
       ))}
       {/* gallerians övre våningsplan på andra sidan */}
-      <mesh position={[0, FLOOR_H - 0.25, maxZ + 6.4]}>
-        <boxGeometry args={[50, 0.5, 1.2]} />
-        <meshStandardMaterial color="#f1f0ed" roughness={0.8} />
-      </mesh>
-      <mesh position={[0, FLOOR_H + 0.55, maxZ + 5.82]} material={MAT.glass}>
-        <planeGeometry args={[50, 1.1]} />
-      </mesh>
+      {LEVELS.slice(1).map((l) => (
+        <group key={l.id}>
+          <mesh position={[0, l.id * FLOOR_H - 0.25, maxZ + 6.4]}>
+            <boxGeometry args={[50, 0.5, 1.2]} />
+            <meshStandardMaterial color="#f1f0ed" roughness={0.8} />
+          </mesh>
+          <mesh position={[0, l.id * FLOOR_H + 0.55, maxZ + 5.82]} material={MAT.glass}>
+            <planeGeometry args={[50, 1.1]} />
+          </mesh>
+        </group>
+      ))}
     </group>
   );
 }

@@ -278,7 +278,7 @@ async function importOne({ url, category }, args, canCutout) {
       console.warn(`  ! friläggning misslyckades: ${e.message}`);
     }
   }
-  const tType = { tops: 'upper', outerwear: 'upper', jeans: 'lower', trousers: 'lower', skirts: 'lower', dresses: 'full' }[cat];
+  const tType = { tops: 'upper', knitwear: 'upper', outerwear: 'upper', jeans: 'lower', trousers: 'lower', skirts: 'lower', dresses: 'full' }[cat];
   if (tryOnImage && tType) {
     try { anchorsOut = await estimateAnchors(tryOnFile, tType, cat === 'outerwear' ? 'outer' : cat === 'skirts' ? 'skirt' : ''); } catch { /* standardankare */ }
   }
@@ -365,7 +365,9 @@ const URL_CATEGORIES = [
   ['dresses', /\/klader\/kl[aä]nningar(jumpsuits)?\//],
   ['skirts', /\/klader\/kjolar\//],
   ['outerwear', /\/klader\/(coatsjackets|jackor|kappor|ytterkl[aä]der|blazers?|kavajer|jackor-kappor|rockar)[/-]/],
-  ['tops', /\/klader\/(toppar|tr[oö]jor|blusarskjortor|skjortor|blusar|skjortor-blusar|t-shirts|linnen)[/-]/],
+  ['knitwear', /\/klader\/tr[oö]jor\//],
+  ['trousers', /\/klader\/byxor\//],
+  ['tops', /\/klader\/(toppar|blusarskjortor|skjortor|blusar|skjortor-blusar|t-shirts|linnen)[/-]/],
   ['bags', /\/accessoarer\/v[aä]skor(planbocker)?\//],
   ['shoes', /\/accessoarer\/skor\//],
 ];

@@ -113,7 +113,7 @@ miljövariabler på tjänsten:
 | Variabel | Exempel | Effekt |
 |---|---|---|
 | `GT_SITEMAP` | `https://www.ginatricot.com/market_sitemaps/se/sitemap.xml` | sajtens sitemap (tillåten enligt robots.txt) |
-| `GT_IMPORT_PLAN` | `tops:6,jeans:5,dresses:7,skirts:2,outerwear:5,bags:3,shoes:2` | antal produkter per kategori |
+| `GT_IMPORT_PLAN` | `tops:8,knitwear:7,trousers:7,jeans:8,dresses:8,skirts:4,outerwear:7,bags:4,shoes:4` | antal produkter per kategori (minst 50 totalt) |
 | `GT_DEBUG` | `1` | skriver ut bildanalysen i byggloggen |
 | `PORT` | `8080` | serverns port |
 
@@ -272,17 +272,30 @@ npx @gltf-transform/cli optimize in.glb out.glb --texture-compress webp
 
 ---
 
-## Två våningar och rulltrappor
+## Tre våningar och rulltrappor
 
-Butiken har **entréplan** (entré, denim, toppar, accessoarer, ytterkläder, kassa) och
-**övre plan** (klänningar, fest & nyheter), 4 m golv till golv (`FLOOR_H`). Rulltrapporna
-upp och ned längs högerväggen konfigureras i `ESCALATOR` i `src/config/storeConfig.js`
-(position, längd, hastighet) och schaktet i `VOID`. Man åker automatiskt när man kliver på;
-klick på golvet, kartan, zonhopp och den guidade turen planerar vägen över båda våningarna.
-Minikartan har en våningsväljare.
+| Plan | Zoner |
+|---|---|
+| Plan 1 – Entréplan | Entré, Denim, Toppar, Accessoarer, Ytterkläder, Kassa & provrum |
+| Plan 2 | Klänningar, Fest & nyheter |
+| Plan 3 | Tröjor & stickat, Byxor |
 
-Möbler på övre plan läggs i `onLevel(1, [...])` i `src/config/fixtures.js`, och zoner får
-`level: 1` i `src/config/zones.js`.
+Våningarna ligger 4 m golv till golv (`FLOOR_H`, `LEVELS` i `src/config/storeConfig.js`).
+Rulltrapporna (par med upp och ned) definieras i `ESCALATORS` med `fromLevel`, position och
+hastighet. Schakten i bjälklagen räknas fram automatiskt. Man åker automatiskt när man kliver
+på. Klick på golvet, kartan, zonhopp och den guidade turen planerar vägen över alla våningar,
+även flera åk i rad. Minikartan har en våningsväljare.
+
+Möbler på en våning läggs i `onLevel(n, [...])` i `src/config/fixtures.js`, och zoner får
+`level: n` i `src/config/zones.js`.
+
+### 3D-plagg ur produktbilder
+
+Hängande plagg, väskor och skor samt skyltdockornas kläder byggs i 3D ur den frilagda
+produktbilden (`src/scene/products/inflate.js`). Siluetten ger ett avståndsfält som blir
+plaggets volym, och fotot ligger som textur på fram- och baksidan. Skyltdockorna får plagget
+passat efter axlar, höfter och knän med samma ankare som AR-provningen. Vikta och
+sidohängda plagg får tyg och färg utsnittade ur fotot.
 
 ## Navigering
 

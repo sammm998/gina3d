@@ -58,44 +58,51 @@ export const MODELS = {
   screen: null,
 };
 
-/** Två våningar: entréplan (level 0) och övre plan (level 1). */
+/** Tre våningar: entréplan (level 0), plan 2 (level 1) och plan 3 (level 2). */
 export const FLOOR_H = 4.0; // golv till golv
 export const LEVELS = [
   { id: 0, name: 'Entréplan', short: 'Plan 1' },
-  { id: 1, name: 'Övre plan', short: 'Plan 2' },
+  { id: 1, name: 'Klänningar & fest', short: 'Plan 2' },
+  { id: 2, name: 'Stickat & byxor', short: 'Plan 3' },
 ];
+export const TOP_Y = (LEVELS.length - 1) * FLOOR_H + STORE.height; // översta taket
 
 /**
- * Rulltrappor längs högerväggen: en upp och en ned, sida vid sida.
+ * Rulltrappor. Varje par (upp + ned) går från `fromLevel` till våningen ovanför.
  * Längs z: nedre platå (zEntry–zBottom) → lutning 30° (zBottom–zTop) → övre platå (zTop–zExit).
  */
-export const ESCALATOR = {
-  minX: 9.0,
-  maxX: 11.8,
-  divider: 10.4,
-  lanes: [
-    { id: 'up', x: 9.7, dir: 1, label: 'Upp' },
-    { id: 'down', x: 11.1, dir: -1, label: 'Ned' },
-  ],
-  zEntry: -6.4,
-  zBottom: -5.2,
-  zTop: 1.73,
-  zExit: 2.9,
-  rise: FLOOR_H,
-  speed: 0.5, // m/s
-};
+const RUN = { zEntry: -6.4, zBottom: -5.2, zTop: 1.73, zExit: 2.9, rise: FLOOR_H, speed: 0.5 };
+export const ESCALATORS = [
+  {
+    id: 'e1', fromLevel: 0, minX: 9.0, maxX: 11.8, divider: 10.4, ...RUN,
+    lanes: [{ id: 'up', x: 9.7, dir: 1 }, { id: 'down', x: 11.1, dir: -1 }],
+  },
+  {
+    id: 'e2', fromLevel: 1, minX: 6.0, maxX: 8.8, divider: 7.4, ...RUN,
+    lanes: [{ id: 'up', x: 6.7, dir: 1 }, { id: 'down', x: 8.1, dir: -1 }],
+  },
+];
+/** Bakåtkompatibelt: den första rulltrappan. */
+export const ESCALATOR = ESCALATORS[0];
 
-/** Öppningen i bjälklaget ovanför rulltrapporna. */
-export const VOID = { minX: 9.0, maxX: 11.8, minZ: -3.3, maxZ: ESCALATOR.zTop };
+/** Öppningen i bjälklaget ovanför en rulltrappa. */
+export function voidOf(esc) {
+  return { minX: esc.minX, maxX: esc.maxX, minZ: -3.3, maxZ: esc.zTop };
+}
+export const VOID = voidOf(ESCALATORS[0]);
 
-/** Höjd på rulltrappans steg vid en viss z-position. */
-export function rampHeight(z) {
-  const e = ESCALATOR;
-  if (z <= e.zBottom) return 0;
-  if (z >= e.zTop) return e.rise;
-  return ((z - e.zBottom) / (e.zTop - e.zBottom)) * e.rise;
+/** Hål i golvet på en våning (rulltrappan underifrån) resp. i taket (rulltrappan uppåt). */
+export const floorHoleOf = (level) => ESCALATORS.filter((e) => e.fromLevel === level - 1).map(voidOf);
+export const ceilingHoleOf = (level) => ESCALATORS.filter((e) => e.fromLevel === level).map(voidOf);
+
+/** Höjd (relativt rulltrappans nedre våning) vid en viss z-position. */
+export function rampHeight(z, esc = ESCALATORS[0]) {
+  if (z <= esc.zBottom) return 0;
+  if (z >= esc.zTop) return esc.rise;
+  return ((z - esc.zBottom) / (esc.zTop - esc.zBottom)) * esc.rise;
 }
 
-export function inEscalatorLanes(x) {
-  return x > ESCALATOR.minX && x < ESCALATOR.maxX;
+export function inLanes(x, esc = ESCALATORS[0]) {
+  return x > esc.minX && x < esc.maxX;
 }
+export const inEscalatorLanes = (x) => inLanes(x, ESCALATORS[0]);

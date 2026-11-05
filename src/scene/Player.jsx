@@ -1,67 +1,91 @@
 import { useEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { ESCALATOR, FLOOR_H, PLAYER, inEscalatorLanes, rampHeight } from '../config/storeConfig.js';
+import { ESCALATORS, FLOOR_H, PLAYER, inLanes, rampHeight } from '../config/storeConfig.js';
 import { input, player } from '../nav/playerState.js';
-import { navGrids, rampWorld, worlds } from '../nav/world.js';
+import { navGrids, rampWorlds, worlds } from '../nav/world.js';
 import { useStore } from '../state/useStore.js';
 
 const PITCH_LIMIT = 1.25;
-const E = ESCALATOR;
-const UP = E.lanes.find((l) => l.dir > 0);
-const DOWN = E.lanes.find((l) => l.dir < 0);
+const laneOf = (E, dir) => E.lanes.find((l) => Math.sign(l.dir) === dir);
 
 /** Vilken våning spelaren "räknas" till just nu (på rulltrappan: närmaste). */
 function currentLevel() {
-  if (player.mode === 'ramp') return player.y > FLOOR_H / 2 ? 1 : 0;
+  if (player.mode === 'ramp') {
+    const E = ESCALATORS[player.esc];
+    return E.fromLevel + (player.y - E.fromLevel * FLOOR_H > FLOOR_H / 2 ? 1 : 0);
+  }
   return player.level;
 }
 
+/** Ett åk: gå till trappans start, åk, kliv av. Returnerar { start, ride, end, level }. */
+function rideLeg(level, dir) {
+  const E = ESCALATORS.find((e) => e.fromLevel === (dir > 0 ? level : level - 1));
+  if (!E) return null;
+  const lane = laneOf(E, dir);
+  const low = { x: lane.x, z: E.zEntry - 0.6 };
+  const high = { x: lane.x, z: E.zExit + 0.6 };
+  return dir > 0
+    ? { start: low, ride: { x: lane.x, z: E.zEntry + 0.1 }, end: high, level: level + 1 }
+    : { start: high, ride: { x: lane.x, z: E.zExit - 0.1 }, end: low, level: level - 1 };
+}
+
 /**
- * Väg till ett mål, även på en annan våning: gå till rätt rulltrappa,
- * åk upp/ned och fortsätt till målet.
+ * Väg till ett mål, även flera våningar bort: gå till rätt rulltrappa, åk
+ * (en eller flera gånger) och fortsätt till målet.
  */
 function planPath(nav) {
-  const from = { x: player.x, z: player.z };
   const to = { x: nav.x, z: nav.z };
   const target = nav.level ?? currentLevel();
-  const here = currentLevel();
-  if (target === here && player.mode !== 'ramp') return navGrids[here]?.findPath(from, to);
+  let pts = [];
+  let here = currentLevel();
+  let from = { x: player.x, z: player.z };
   if (player.mode === 'ramp') {
-    // redan på rulltrappan: åk klart åt det håll trappan går, fortsätt sedan
-    const lane = player.x < E.divider ? UP : DOWN;
-    const endLevel = lane.dir > 0 ? 1 : 0;
-    const off = lane.dir > 0 ? { x: lane.x, z: E.zExit + 0.6 } : { x: lane.x, z: E.zEntry - 0.6 };
-    const rest = navGrids[endLevel]?.findPath(off, endLevel === target ? to : off) ?? [];
-    return [{ x: lane.x, z: player.z }, off, ...rest];
+    // åk klart åt det håll trappan går och fortsätt därifrån
+    const E = ESCALATORS[player.esc];
+    const dir = player.x < E.divider ? 1 : -1;
+    const lane = laneOf(E, dir);
+    const off = dir > 0 ? { x: lane.x, z: E.zExit + 0.6 } : { x: lane.x, z: E.zEntry - 0.6 };
+    pts.push({ x: lane.x, z: player.z }, off);
+    here = E.fromLevel + (dir > 0 ? 1 : 0);
+    from = off;
   }
-  const lane = target > here ? UP : DOWN;
-  const start = lane.dir > 0 ? { x: lane.x, z: E.zEntry - 0.6 } : { x: lane.x, z: E.zExit + 0.6 };
-  const end = lane.dir > 0 ? { x: lane.x, z: E.zExit + 0.6 } : { x: lane.x, z: E.zEntry - 0.6 };
-  const a = navGrids[here]?.findPath(from, start);
-  const b = navGrids[target]?.findPath(end, to);
-  if (!a || !b) return null;
-  return [...a, { x: lane.x, z: lane.dir > 0 ? E.zEntry + 0.1 : E.zExit - 0.1 }, end, ...b];
+  while (here !== target) {
+    const leg = rideLeg(here, target > here ? 1 : -1);
+    if (!leg) return null;
+    const a = navGrids[here]?.findPath(from, leg.start);
+    if (!a) return null;
+    pts.push(...a, leg.ride, leg.end);
+    here = leg.level;
+    from = leg.end;
+  }
+  const last = navGrids[here]?.findPath(from, to);
+  if (!last) return null;
+  return [...pts, ...last];
 }
 
 /** Byter mellan golv och rulltrappa beroende på position. */
 function updateMode() {
-  const lane = inEscalatorLanes(player.x);
   if (player.mode === 'floor') {
-    if (lane && player.level === 0 && player.z > E.zEntry + 0.35 && player.z < E.zTop) player.mode = 'ramp';
-    else if (lane && player.level === 1 && player.z < E.zExit - 0.35 && player.z > E.zBottom) player.mode = 'ramp';
+    for (let i = 0; i < ESCALATORS.length; i++) {
+      const E = ESCALATORS[i];
+      if (!inLanes(player.x, E)) continue;
+      const onLow = player.level === E.fromLevel && player.z > E.zEntry + 0.35 && player.z < E.zTop;
+      const onHigh = player.level === E.fromLevel + 1 && player.z < E.zExit - 0.35 && player.z > E.zBottom;
+      if (onLow || onHigh) {
+        player.mode = 'ramp';
+        player.esc = i;
+        break;
+      }
+    }
   } else {
-    if (player.z < E.zEntry + 0.2) { player.mode = 'floor'; player.level = 0; }
-    else if (player.z > E.zExit - 0.2) { player.mode = 'floor'; player.level = 1; }
+    const E = ESCALATORS[player.esc];
+    if (player.z < E.zEntry + 0.2) { player.mode = 'floor'; player.level = E.fromLevel; }
+    else if (player.z > E.zExit - 0.2) { player.mode = 'floor'; player.level = E.fromLevel + 1; }
   }
-  player.y = player.mode === 'ramp' ? rampHeight(player.z) : player.level * FLOOR_H;
-}
-
-function angleDiff(a, b) {
-  let d = b - a;
-  while (d > Math.PI) d -= Math.PI * 2;
-  while (d < -Math.PI) d += Math.PI * 2;
-  return d;
+  player.y = player.mode === 'ramp'
+    ? ESCALATORS[player.esc].fromLevel * FLOOR_H + rampHeight(player.z, ESCALATORS[player.esc])
+    : player.level * FLOOR_H;
 }
 
 /**
@@ -189,12 +213,13 @@ export default function Player() {
     // --- flytta + kollision (delsteg för att inte tunnla genom tunna väggar)
     const pos = { x: player.x, z: player.z };
     // rulltrappan rör sig: upp-trappan mot +z, ned-trappan mot −z
-    const belt = player.mode === 'ramp' ? (player.x < E.divider ? UP.dir : DOWN.dir) * E.speed : 0;
+    const esc = player.mode === 'ramp' ? ESCALATORS[player.esc] : null;
+    const belt = esc ? (player.x < esc.divider ? 1 : -1) * esc.speed : 0;
     const steps = 2;
     for (let i = 0; i < steps; i++) {
       pos.x += (vel.current.x * dt) / steps;
       pos.z += ((vel.current.y + belt) * dt) / steps;
-      (player.mode === 'ramp' ? rampWorld : worlds[player.level]).resolve(pos, PLAYER.radius);
+      (esc ? rampWorlds[player.esc] : worlds[player.level]).resolve(pos, PLAYER.radius);
     }
     player.x = pos.x;
     player.z = pos.z;

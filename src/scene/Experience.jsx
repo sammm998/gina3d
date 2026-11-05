@@ -10,10 +10,10 @@ import Controls from './Controls.jsx';
 import NavMarker from './NavMarker.jsx';
 import Storefront from './Storefront.jsx';
 import StoreContent from './StoreContent.jsx';
-import { FLOOR_H, STORE } from '../config/storeConfig.js';
+import { FLOOR_H, LEVELS, STORE } from '../config/storeConfig.js';
 import { useStore } from '../state/useStore.js';
 
-const LEVELS = ['low', 'medium', 'high'];
+const QUALITY_LEVELS = ['low', 'medium', 'high'];
 
 /**
  * Belysning: hemisfärljus + riktade ljus utan realtidsskuggor, och en
@@ -42,7 +42,7 @@ function Lighting() {
 /** Mjuka kontaktskuggor under möbler och plagg – renderas om bara när layouten ändras. */
 function BakedShadows() {
   const version = useStore((s) => s.layoutVersion);
-  return [0, FLOOR_H].map((y) => (
+  return LEVELS.map((l) => l.id * FLOOR_H).map((y) => (
     <ContactShadows
       key={`${version}-${y}`}
       frames={1}
@@ -86,7 +86,7 @@ function ToneMapSync({ post }) {
 
 /** ?quality=high|medium|low låser kvalitetsnivån (ingen automatisk sänkning). */
 const LOCKED_QUALITY = new URLSearchParams(window.location.search).get('quality');
-if (LEVELS.includes(LOCKED_QUALITY)) useStore.getState().setQuality(LOCKED_QUALITY);
+if (QUALITY_LEVELS.includes(LOCKED_QUALITY)) useStore.getState().setQuality(LOCKED_QUALITY);
 
 export default function Experience({ children }) {
   const quality = useStore((s) => s.quality);
@@ -103,8 +103,8 @@ export default function Experience({ children }) {
   const step = (dir) => {
     if (LOCKED_QUALITY) return;
     const s = useStore.getState();
-    const i = LEVELS.indexOf(s.quality);
-    const n = LEVELS[Math.max(0, Math.min(LEVELS.length - 1, i + dir))];
+    const i = QUALITY_LEVELS.indexOf(s.quality);
+    const n = QUALITY_LEVELS[Math.max(0, Math.min(QUALITY_LEVELS.length - 1, i + dir))];
     if (n !== s.quality) s.setQuality(n);
   };
 

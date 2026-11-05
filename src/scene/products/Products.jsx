@@ -4,6 +4,7 @@ import { RoundedBoxGeometry } from 'three-stdlib';
 import { useStore } from '../../state/useStore.js';
 import { accessoryKind, fabricKind, garmentClass, hangLength, primaryHex } from '../../data/productMeta.js';
 import { fabricMaterial, productSwatch } from '../textures.js';
+import { inflatedGeometry, inflatedMaterials } from './inflate.js';
 import { requestTexture, useLazyTexture } from '../useLazyTexture.js';
 import { productEvents, useIsHighlighted } from './events.js';
 import { MAT } from '../materials.js';
@@ -73,49 +74,38 @@ const curvedPlane = (() => {
 
 function FaceOut({ entry }) {
   const { product: p, slot } = entry;
-  // Frilagd tryOnImage ger bäst resultat; annars används första produktbilden.
   const tex = useLazyTexture(p.tryOnImage || p.images[0], slot.pos, 15);
   const hl = useIsHighlighted(p.id);
   const L = hangLength(p);
-  const W = L * 0.75;
   const isLower = garmentClass(p) === 'lower' || garmentClass(p) === 'skirt';
-  const topOffset = isLower ? 0.03 : 0.08 * L; // halsöppningen sitter en bit ner i bilden
+  const topOffset = isLower ? 0.02 : 0.05 * L; // halsöppningen sitter en bit ner i bilden
   const ev = useMemo(() => productEvents(p.id), [p.id]);
-  const front = useMemo(
-    () => new THREE.MeshStandardMaterial({ alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.92, color: '#ffffff' }),
-    []
-  );
-  const back = useMemo(
-    () => new THREE.MeshStandardMaterial({ alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.95, color: '#c9c9c9' }),
-    []
-  );
+  // 3D-plagg ur den frilagda bilden (volym, fram- och baksida)
+  const geom = useMemo(() => (tex?.image && p.tryOnImage ? inflatedGeometry(tex.image) : null), [tex, p.tryOnImage]);
+  const mats = useMemo(() => (tex ? inflatedMaterials(tex) : null), [tex]);
+  const backMats = useMemo(() => {
+    if (!tex) return null;
+    const m = inflatedMaterials(tex);
+    m.forEach((x) => x.color.multiplyScalar(0.78));
+    return m;
+  }, [tex]);
   useEffect(() => {
-    for (const m of [front, back]) {
-      m.map = tex;
-      m.needsUpdate = true;
-    }
-    if (!tex) {
-      front.color.set(primaryHex(p));
-      back.color.set(primaryHex(p)).multiplyScalar(0.8);
-    } else {
-      front.color.set('#ffffff');
-      back.color.set('#c9c9c9');
-    }
-  }, [tex, front, back, p]);
-  useEffect(() => {
-    front.emissive.set(hl ? '#ffffff' : '#000000');
-    front.emissiveIntensity = hl ? 0.12 : 0;
-  }, [hl, front]);
-
+    if (!mats) return;
+    mats[0].emissive.set(hl ? '#ffffff' : '#000000');
+    mats[0].emissiveIntensity = hl ? 0.12 : 0;
+  }, [hl, mats]);
   const [x, y, z] = slot.pos;
+  const depth = L * (garmentClass(p) === 'outer' ? 0.085 : 0.065);
   return (
     <group position={[x, y, z]} rotation-y={slot.rot}>
       <mesh geometry={hangerGeom} material={MAT.black} position={[0, -0.02, 0]} />
-      <group position={[0, -L / 2 + topOffset - 0.02, 0]} scale={hl ? 1.025 : 1}>
-        <mesh geometry={curvedPlane} material={front} scale={[W, L, W]} userData={{ productId: p.id }} {...ev} />
-        <mesh geometry={curvedPlane} material={back} scale={[W, L, W]} position={[0.012, 0.004, -0.045]} raycast={() => null} />
-        <mesh geometry={curvedPlane} material={back} scale={[W, L, W]} position={[-0.01, 0.008, -0.09]} raycast={() => null} />
-      </group>
+      {geom && (
+        <group position={[0, -L / 2 + topOffset - 0.02, depth * 0.85]} scale={hl ? 1.025 : 1}>
+          <mesh geometry={geom} material={mats} scale={[L, L, depth]} userData={{ productId: p.id }} {...ev} castShadow={false} />
+          {/* fler storlekar av samma plagg bakom */}
+          <mesh geometry={geom} material={backMats} scale={[L, L, depth]} position={[0.012, 0.006, -depth * 1.7]} raycast={() => null} />
+        </group>
+      )}
     </group>
   );
 }
@@ -280,7 +270,7 @@ function FoldTops({ productId, list }) {
   }, [product]);
   useLayoutEffect(() => {
     if (!ref.current) return;
-    list.forEach((it, i) => ref.current.setMatrixAt(i, compose(it.x, it.y + 0.0015, it.z, it.ry, it.w * 0.94, 1, it.d * 0.94)));
+    list.forEach((it, i) => ref.current.setMatrixAt(i, compose(it.x, it.y + 0.004, it.z, it.ry, it.w * 0.94, 1, it.d * 0.94)));
     ref.current.instanceMatrix.needsUpdate = true;
   }, [list, tex]);
   if (!tex) return null;
@@ -440,14 +430,19 @@ function CutoutAccessory({ entry, index }) {
   const ev = useMemo(() => productEvents(p.id), [p.id]);
   const kind = accessoryKind(p);
   const h = kind === 'shoes' ? 0.17 : kind === 'tote' ? 0.36 : 0.3;
-  const aspect = tex?.image ? tex.image.width / tex.image.height : 1;
+  const geom = useMemo(() => (tex?.image ? inflatedGeometry(tex.image, { cols: 34, back: 1 }) : null), [tex]);
+  const mats = useMemo(() => (tex ? inflatedMaterials(tex, { roughness: 0.55 }) : null), [tex]);
+  useEffect(() => {
+    if (!mats) return;
+    mats[0].emissive.set(hl ? '#ffffff' : '#000000');
+    mats[0].emissiveIntensity = hl ? 0.1 : 0;
+  }, [hl, mats]);
   const r = rng(index + 301);
-  if (!tex) return null;
+  if (!geom) return null;
+  const depth = h * (kind === 'shoes' ? 0.5 : 0.32);
   return (
-    <mesh position={[x, y + h / 2 + 0.004, z]} rotation-y={entry.slot.rot + (r() - 0.5) * 0.4} scale={hl ? 1.04 : 1} userData={{ productId: p.id }} {...ev}>
-      <planeGeometry args={[h * aspect, h]} />
-      <meshStandardMaterial map={tex} alphaTest={0.4} side={THREE.DoubleSide} roughness={0.6} emissive={hl ? '#ffffff' : '#000000'} emissiveIntensity={hl ? 0.1 : 0} />
-    </mesh>
+    <mesh geometry={geom} material={mats} position={[x, y + h / 2 + 0.004, z]} rotation-y={entry.slot.rot + (r() - 0.5) * 0.4}
+      scale={[h * (hl ? 1.04 : 1), h * (hl ? 1.04 : 1), depth]} userData={{ productId: p.id }} {...ev} />
   );
 }
 

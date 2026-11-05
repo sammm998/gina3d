@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ESCALATOR, LEVELS, STORE, VOID } from '../config/storeConfig.js';
+import { ESCALATORS, LEVELS, STORE, voidOf } from '../config/storeConfig.js';
 import { ZONES, zonesOnLevel } from '../config/zones.js';
 import { FIXTURES } from '../config/fixtures.js';
 import { player } from '../nav/playerState.js';
@@ -78,8 +78,16 @@ export default function Minimap({ onNavigate }) {
           );
         })}
         {/* rulltrappor */}
-        <rect x={ESCALATOR.minX} y={level === 0 ? ESCALATOR.zEntry : VOID.minZ} width={ESCALATOR.maxX - ESCALATOR.minX} height={(level === 0 ? ESCALATOR.zExit : ESCALATOR.zExit) - (level === 0 ? ESCALATOR.zEntry : VOID.minZ)} className="minimap__escalator" />
-        <text x={(ESCALATOR.minX + ESCALATOR.maxX) / 2} y={level === 0 ? ESCALATOR.zEntry - 0.45 : ESCALATOR.zExit + 0.55} className="minimap__label">{level === 0 ? 'Upp ↑' : 'Ned ↓'}</text>
+        {ESCALATORS.filter((E) => E.fromLevel === level || E.fromLevel === level - 1).map((E) => {
+          const up = E.fromLevel === level;
+          const z0 = up ? E.zEntry : voidOf(E).minZ;
+          return (
+            <g key={E.id}>
+              <rect x={E.minX} y={z0} width={E.maxX - E.minX} height={E.zExit - z0} className="minimap__escalator" />
+              <text x={(E.minX + E.maxX) / 2} y={up ? E.zEntry - 0.45 : E.zExit + 0.55} className="minimap__label">{up ? 'Upp ↑' : 'Ned ↓'}</text>
+            </g>
+          );
+        })}
         {FIXTURES.filter((f) => f.map && (f.level || 0) === level).map((f, i) =>
           f.map.circle ? (
             <circle key={i} cx={f.map.circle[0]} cy={f.map.circle[1]} r={f.map.circle[2]} className="minimap__fixture" />

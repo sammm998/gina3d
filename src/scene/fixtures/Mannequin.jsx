@@ -4,6 +4,10 @@ import * as THREE from 'three';
 import { MAT } from '../materials.js';
 import { fabricMaterial, productSwatch } from '../textures.js';
 import { useStore } from '../../state/useStore.js';
+import { useLazyTexture } from '../useLazyTexture.js';
+import { inflatedGeometry, inflatedMaterials } from '../products/inflate.js';
+import { DEFAULT_ANCHORS } from '../../tryon/overlay.js';
+import { tryOnType } from '../../data/productMeta.js';
 
 /**
  * Vit, ansiktslös skyltdocka i low poly, byggd av lathe-geometrier.
@@ -45,7 +49,45 @@ export function clothMaterial(color, fabric = 'woven') {
 const ARM_X = 0.205;
 const ARM_TILT = 0.09;
 
-function Body() {
+/**
+ * Dockans mått (lokalt, framsida mot +z) som plagget passas mot:
+ * axelleder, höftleder och knän – samma punkter som AR-provningen använder.
+ */
+const BODY = {
+  upper: { top: 1.44, half: 0.195, bottom: 0.93, depth: 0.15 },
+  outer: { top: 1.45, half: 0.2, bottom: 0.93, depth: 0.17 },
+  lower: { top: 0.96, half: 0.088, bottom: 0.5, depth: 0.135 },
+  skirt: { top: 0.98, half: 0.088, bottom: 0.5, depth: 0.16 },
+  full: { top: 1.44, half: 0.19, bottom: 0.5, depth: 0.165 },
+};
+
+/** Det riktiga plagget (frilagd bild → 3D) på dockan. */
+function InflatedGarment({ piece, product, ev }) {
+  const tex = useLazyTexture(product.tryOnImage, [0, 1, 0], 1e6);
+  const hl = useIsHighlighted(product.id);
+  const geom = useMemo(() => (tex?.image ? inflatedGeometry(tex.image) : null), [tex]);
+  const mats = useMemo(() => (tex ? inflatedMaterials(tex) : null), [tex]);
+  useEffect(() => {
+    if (!mats) return;
+    mats[0].emissive.set(hl ? '#ffffff' : '#000000');
+    mats[0].emissiveIntensity = hl ? 0.12 : 0;
+  }, [hl, mats]);
+  if (!geom) return null;
+  const B = BODY[piece.type] ?? BODY.upper;
+  const t = tryOnType(product) || 'upper';
+  const A = product.tryOnAnchors || DEFAULT_ANCHORS[t];
+  const aspect = geom.userData.aspect;
+  const ay = (A.left[1] + A.right[1]) / 2;
+  const sx = (B.half * 2) / Math.max(0.05, (A.right[0] - A.left[0]) * aspect);
+  const sy = (B.top - B.bottom) / Math.max(0.05, A.bottomY - ay);
+  const px = -(((A.left[0] + A.right[0]) / 2) - 0.5) * aspect * sx;
+  const py = B.top - (0.5 - ay) * sy;
+  return (
+    <mesh geometry={geom} material={mats} position={[px, py, 0.01]} scale={[sx, sy, B.depth]} {...ev} userData={{ productId: product.id }} />
+  );
+}
+
+function Body({ hideArms = false }) {
   return (
     <group>
       <mesh geometry={geo.torso} material={MAT.mannequin} scale={[1, 1, 0.72]} />
@@ -54,7 +96,7 @@ function Body() {
       <mesh geometry={geo.head} material={MAT.mannequin} position-y={1.7} scale={[0.092, 0.118, 0.104]} />
       {[-1, 1].map((s) => (
         <group key={s}>
-          <mesh geometry={geo.arm} material={MAT.mannequin} position={[s * (ARM_X + 0.02), 1.13, 0]} rotation-z={s * ARM_TILT} />
+          {!hideArms && <mesh geometry={geo.arm} material={MAT.mannequin} position={[s * (ARM_X + 0.02), 1.13, 0]} rotation-z={s * ARM_TILT} />}
           <mesh geometry={geo.leg} material={MAT.mannequin} position={[s * 0.085, 0.5, 0]} />
           <mesh geometry={geo.foot} material={MAT.mannequin} position={[s * 0.088, 0.05, 0.05]} scale={[0.045, 0.04, 0.11]} />
         </group>
@@ -90,6 +132,7 @@ function Garment({ piece, eventsFor }) {
   }, [hl, m]);
   const ev = eventsFor ? eventsFor(piece.productId) : {};
   const ud = { productId: piece.productId };
+  if (product?.tryOnImage) return <InflatedGarment piece={piece} product={product} ev={ev} />;
   switch (piece.type) {
     case 'upper':
     case 'outer': {
@@ -137,7 +180,7 @@ export default function Mannequin({ f, outfit = [], eventsFor }) {
   }, [outfit]);
   return (
     <group position={[f.x, f.y || 0, f.z]} rotation-y={f.rot}>
-      <Body />
+      <Body hideArms={order.some((p) => ['upper', 'outer', 'full'].includes(p.type))} />
       {order.map((p, i) => (
         <Garment key={`${p.productId}-${i}`} piece={p} eventsFor={eventsFor} />
       ))}

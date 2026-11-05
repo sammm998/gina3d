@@ -148,7 +148,7 @@ export function FramedPhoto({ f }) {
       <mesh position-z={0.031} material={MAT.white}>
         <planeGeometry args={[f.w - border * 2, f.h - border * 2]} />
       </mesh>
-      <mesh position-z={0.032}>
+      <mesh position-z={0.037}>
         <planeGeometry args={[f.w - (border + mat) * 2, f.h - (border + mat) * 2]} />
         <meshStandardMaterial key={tex ? 'tex' : 'none'} map={tex} color={tex ? '#ffffff' : '#ddd6cc'} roughness={0.6} />
       </mesh>

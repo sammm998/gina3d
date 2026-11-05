@@ -1,28 +1,23 @@
-import { ESCALATOR, FLOOR_H, STORE, VOID } from '../config/storeConfig.js';
+import { ESCALATORS, FLOOR_H, LEVELS, STORE, voidOf } from '../config/storeConfig.js';
 import { CollisionWorld } from './collision.js';
 import { NavGrid } from './pathfinding.js';
 
 /**
  * Kollisionsvärldar:
- *   worlds[0]  entréplan (inkl. fasad med dörr och gallerian utanför)
- *   worlds[1]  övre plan (räcken runt schaktet)
- *   rampWorld  på rulltrappan (sidoräcken + mittdelare)
+ *   worlds[level]     en per våning (entréplanet har fasad med dörr och gallerian utanför)
+ *   rampWorlds[i]     på rulltrappa i (sidoräcken + mittdelare)
  * Varje våning har ett eget A*-rutnät (navGrids[level]).
  */
-export const worlds = [new CollisionWorld(), new CollisionWorld()];
-export const rampWorld = new CollisionWorld();
-export const navGrids = [null, null];
-
-/** Bakåtkompatibelt: entréplanets värld/rutnät. */
-export const world = worlds[0];
-export let navGrid = null;
+export const worlds = LEVELS.map(() => new CollisionWorld());
+export const rampWorlds = ESCALATORS.map(() => new CollisionWorld());
+export const navGrids = LEVELS.map(() => null);
 
 function addShell(w, withDoor) {
   const { minX, maxX, minZ, maxZ, door } = STORE;
   const t = 0.12;
-  w.addRect(minX - 1, minZ - 1, maxX + 1, minZ); // bakvägg
-  w.addRect(minX - 1, minZ - 1, minX, maxZ); // vänster vägg
-  w.addRect(maxX, minZ - 1, maxX + 1, maxZ); // höger vägg
+  w.addRect(minX - 1, minZ - 1, maxX + 1, minZ);
+  w.addRect(minX - 1, minZ - 1, minX, maxZ);
+  w.addRect(maxX, minZ - 1, maxX + 1, maxZ);
   if (withDoor) {
     w.addRect(minX - 1, maxZ - t, door.minX, maxZ + t);
     w.addRect(door.maxX, maxZ - t, maxX + 1, maxZ + t);
@@ -33,30 +28,30 @@ function addShell(w, withDoor) {
 
 export function buildWorld(fixtures = []) {
   const { maxZ, outside, minX, maxX, minZ } = STORE;
-  const E = ESCALATOR;
   worlds.forEach((w) => w.clear());
-  rampWorld.clear();
+  rampWorlds.forEach((w) => w.clear());
 
-  // --- entréplan
+  worlds.forEach((w, level) => addShell(w, level === 0));
   const g = worlds[0];
-  addShell(g, true);
   g.addRect(outside.minX - 1, maxZ, outside.minX, outside.maxZ + 1);
   g.addRect(outside.maxX, maxZ, outside.maxX + 1, outside.maxZ + 1);
   g.addRect(outside.minX - 1, outside.maxZ, outside.maxX + 1, outside.maxZ + 1);
-  // rulltrappans sidor och den höga änden (man kliver på från baksidan, −z)
-  g.addRect(E.minX - 0.06, E.zEntry + 0.2, E.minX + 0.04, E.zExit + 0.05);
-  g.addRect(E.maxX - 0.04, E.zEntry + 0.2, E.maxX + 0.06, E.zExit + 0.05);
-  g.addRect(E.minX - 0.06, E.zExit - 0.05, E.maxX + 0.06, E.zExit + 0.05);
 
-  // --- övre plan: räcken runt schaktet, öppet mot rulltrappans övre platå (+z)
-  const u = worlds[1];
-  addShell(u, false);
-  u.addRect(E.minX - 0.06, VOID.minZ - 0.06, E.minX + 0.04, VOID.maxZ + 0.17);
-  u.addRect(E.maxX - 0.04, VOID.minZ - 0.06, E.maxX + 0.06, VOID.maxZ + 0.17);
-  u.addRect(E.minX - 0.06, VOID.minZ - 0.06, E.maxX + 0.06, VOID.minZ + 0.04);
-
-  // --- på rulltrappan: tre räcken (vänster, mitten, höger)
-  for (const x of [E.minX, E.divider, E.maxX]) rampWorld.addRect(x - 0.05, E.zEntry - 0.5, x + 0.05, E.zExit + 0.4);
+  ESCALATORS.forEach((E, i) => {
+    // nedre våningen: sidorna och den höga änden (man kliver på från −z)
+    const lo = worlds[E.fromLevel];
+    lo.addRect(E.minX - 0.06, E.zEntry + 0.2, E.minX + 0.04, E.zExit + 0.05);
+    lo.addRect(E.maxX - 0.04, E.zEntry + 0.2, E.maxX + 0.06, E.zExit + 0.05);
+    lo.addRect(E.minX - 0.06, E.zExit - 0.05, E.maxX + 0.06, E.zExit + 0.05);
+    // övre våningen: räcken runt schaktet, öppet mot övre platån (+z)
+    const hi = worlds[E.fromLevel + 1];
+    const V = voidOf(E);
+    hi.addRect(E.minX - 0.06, V.minZ - 0.06, E.minX + 0.04, V.maxZ + 0.17);
+    hi.addRect(E.maxX - 0.04, V.minZ - 0.06, E.maxX + 0.06, V.maxZ + 0.17);
+    hi.addRect(E.minX - 0.06, V.minZ - 0.06, E.maxX + 0.06, V.minZ + 0.04);
+    // på trappan
+    for (const x of [E.minX, E.divider, E.maxX]) rampWorlds[i].addRect(x - 0.05, E.zEntry - 0.5, x + 0.05, E.zExit + 0.4);
+  });
 
   for (const f of fixtures) {
     const w = worlds[f.level || 0];
@@ -66,9 +61,9 @@ export function buildWorld(fixtures = []) {
     }
   }
 
-  navGrids[0] = new NavGrid(g, { minX, maxX, minZ, maxZ: outside.maxZ }, 0.2, 0.34);
-  navGrids[1] = new NavGrid(u, { minX, maxX, minZ, maxZ }, 0.2, 0.34);
-  navGrid = navGrids[0];
+  worlds.forEach((w, level) => {
+    navGrids[level] = new NavGrid(w, { minX, maxX, minZ, maxZ: level === 0 ? outside.maxZ : maxZ }, 0.2, 0.34);
+  });
   return worlds;
 }
 

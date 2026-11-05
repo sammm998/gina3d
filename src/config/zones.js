@@ -36,7 +36,7 @@ export const ZONES = [
     name: 'Toppar',
     color: '#f1ece4',
     rect: [-7, -3.5, 0, 3.5],
-    categories: ['tops', 'shirts', 'blouses', 'knitwear', 'trousers'],
+    categories: ['tops', 'shirts', 'blouses'],
     viewpoint: { x: -1.2, z: 3.0, lookAt: [-4.2, 0] },
     tour: 'Toppar, blusar och stickat på bord i två nivåer.',
   },
@@ -79,6 +79,26 @@ export const ZONES = [
     tour: 'Säsongens nyheter och festplagg – direkt vid rulltrappan.',
   },
   {
+    id: 'knit',
+    level: 2,
+    name: 'Tröjor & stickat',
+    color: '#efe7da',
+    rect: [-12.5, -7.5, 0, 7.5],
+    categories: ['knitwear', 'cardigans', 'sweaters'],
+    viewpoint: { x: -1.2, z: 3.4, lookAt: [-8, -2] },
+    tour: 'Plan 3: stickade tröjor, koftor och mysiga lager.',
+  },
+  {
+    id: 'trousers',
+    level: 2,
+    name: 'Byxor',
+    color: '#e6e3dc',
+    rect: [0, -7.5, 12.5, 7.5],
+    categories: ['trousers', 'pants', 'shorts'],
+    viewpoint: { x: 4.2, z: 3.6, lookAt: [5, -6] },
+    tour: 'Byxor och kostymbyxor i alla passformer.',
+  },
+  {
     id: 'outerwear',
     name: 'Ytterkläder',
     color: '#e7e3da',
@@ -99,7 +119,7 @@ export const ZONES = [
 ];
 
 /** Ordningen för den guidade turen. */
-export const TOUR_ORDER = ['entrance', 'tops', 'denim', 'checkout', 'outerwear', 'accessories', 'dresses', 'party'];
+export const TOUR_ORDER = ['entrance', 'tops', 'denim', 'checkout', 'outerwear', 'accessories', 'dresses', 'party', 'knit', 'trousers'];
 
 /** Hittar vilken zon en produktkategori hör till. */
 export function zoneForCategory(category) {

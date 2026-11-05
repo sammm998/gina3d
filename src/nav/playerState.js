@@ -13,6 +13,8 @@ export const player = {
   level: 0,
   /** 'floor' eller 'ramp' (på rulltrappan) */
   mode: 'floor',
+  /** index i ESCALATORS när mode === 'ramp' */
+  esc: 0,
   /** golvhöjd under fötterna */
   y: 0,
 };
