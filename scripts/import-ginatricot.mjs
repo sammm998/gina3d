@@ -306,6 +306,12 @@ export async function productUrlsFromSitemap(indexUrl, { verbose = false } = {})
   let children = xml.includes('<sitemapindex') ? locs(xml) : [];
   if (verbose) console.log(`[sitemap] ${indexUrl}: ${children.length} under-sitemaps\n  ${children.slice(0, 30).join('\n  ')}`);
   let pages = children.length ? [] : locs(xml);
+  if (verbose && pages.length) {
+    const depth = (u) => new URL(u).pathname.split('/').filter(Boolean).length;
+    const productish = pages.filter((u) => /\d{4,}/.test(new URL(u).pathname));
+    console.log(`[sitemap] ${pages.length} sidor, ${productish.length} med artikelnummer. Djupast:\n  ${[...pages].sort((x, y) => depth(y) - depth(x)).slice(0, 15).join('\n  ')}`);
+    console.log(`[sitemap] med nummer:\n  ${productish.slice(0, 15).join('\n  ')}`);
+  }
   const productMaps = children.filter((u) => /product|produkt|pdp|article/i.test(u));
   for (const u of (productMaps.length ? productMaps : children).slice(0, 6)) {
     try {
@@ -324,7 +330,8 @@ async function fromEnv() {
   if (process.env.GT_SITEMAP) {
     try {
       const pages = await productUrlsFromSitemap(process.env.GT_SITEMAP, { verbose: true });
-      const sample = pages.filter((u) => /\/se\//.test(u)).slice(0, 2);
+      const withNum = pages.filter((u) => /\d{4,}/.test(new URL(u).pathname));
+      const sample = (withNum.length ? withNum : pages.filter((u) => /\/se\//.test(u)).sort((x, y) => y.length - x.length)).slice(0, 2);
       for (const u of sample) diagnose(await fetchText(u), u);
     } catch (e) {
       console.log(`[sitemap] fel: ${e.message}`);
