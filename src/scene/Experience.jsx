@@ -1,25 +1,33 @@
-import { Suspense, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { AdaptiveDpr, Environment, Lightformer, PerformanceMonitor } from '@react-three/drei';
+import { Suspense, useEffect, useState } from 'react';
+import { Canvas, useThree } from '@react-three/fiber';
+import { AdaptiveDpr, ContactShadows, Environment, Lightformer, PerformanceMonitor } from '@react-three/drei';
+import { Bloom, EffectComposer, N8AO, SMAA, ToneMapping, Vignette } from '@react-three/postprocessing';
+import { ToneMappingMode } from 'postprocessing';
 import * as THREE from 'three';
 import Room, { SPOTS } from './Room.jsx';
 import Player from './Player.jsx';
 import Controls from './Controls.jsx';
 import NavMarker from './NavMarker.jsx';
+import Storefront from './Storefront.jsx';
+import Fixtures from './fixtures/index.jsx';
 import { STORE } from '../config/storeConfig.js';
+import { useStore } from '../state/useStore.js';
+
+const LEVELS = ['low', 'medium', 'high'];
 
 /**
- * Enkel, billig belysning: hemisfärljus + ett riktat ljus utan skuggor, plus en
+ * Belysning: hemisfärljus + riktade ljus utan realtidsskuggor, och en
  * environment map som genereras en gång (frames=1) från ljuspaneler i taket.
- * Ljuskäglor och kontaktskuggor är "bakade" som texturer.
+ * Ljuskäglor och kontaktskuggor "bakas" (renderas en gång) i stället för att
+ * räknas om varje bildruta.
  */
 function Lighting() {
   return (
     <>
-      <hemisphereLight args={['#ffffff', '#cfc9bf', 1.15]} />
-      <directionalLight position={[4, 10, 6]} intensity={0.6} color="#fff8ef" />
+      <hemisphereLight args={['#ffffff', '#bdb6aa', 0.85]} />
+      <directionalLight position={[4, 10, 6]} intensity={0.55} color="#fff4e6" />
       <directionalLight position={[-6, 6, -4]} intensity={0.3} color="#f3f1ff" />
-      <Environment resolution={64} frames={1} background={false}>
+      <Environment resolution={128} frames={1} background={false}>
         <color attach="background" args={['#d9d7d2']} />
         {SPOTS.filter((_, i) => i % 3 === 0).map(([x, z], i) => (
           <Lightformer key={i} form="circle" intensity={3} position={[x, STORE.height - 0.1, z]} rotation-x={Math.PI / 2} scale={0.8} />
@@ -31,28 +39,109 @@ function Lighting() {
   );
 }
 
+/** Mjuka kontaktskuggor under möbler och plagg – renderas om bara när layouten ändras. */
+function BakedShadows() {
+  const version = useStore((s) => s.layoutVersion);
+  return (
+    <ContactShadows
+      key={version}
+      frames={1}
+      position={[0, 0.003, 2.4]}
+      scale={[26, 20.4]}
+      resolution={1024}
+      far={1.4}
+      blur={2.4}
+      opacity={0.75}
+      color="#3a342c"
+    />
+  );
+}
+
+/** Efterbehandling: ambient occlusion, mjuk bloom på lampor, kantutjämning. */
+function Effects({ quality }) {
+  if (quality === 'low') return null;
+  const high = quality === 'high';
+  const effects = [
+    <N8AO key="ao" halfRes aoRadius={0.7} distanceFalloff={0.6} intensity={high ? 2.4 : 1.8} quality={high ? 'medium' : 'performance'} />,
+    high && <Bloom key="bloom" mipmapBlur luminanceThreshold={1} intensity={0.35} radius={0.6} />,
+    <ToneMapping key="tm" mode={ToneMappingMode.NEUTRAL} />,
+    <Vignette key="vig" offset={0.35} darkness={0.35} />,
+    <SMAA key="smaa" />,
+  ].filter(Boolean);
+  return (
+    <EffectComposer key={quality} multisampling={0} disableNormalPass>
+      {effects}
+    </EffectComposer>
+  );
+}
+
+/** Byter renderarens tonmappning när kvalitetsnivån ändras. */
+function ToneMapSync({ post }) {
+  const gl = useThree((s) => s.gl);
+  useEffect(() => {
+    gl.toneMapping = post ? THREE.NoToneMapping : THREE.NeutralToneMapping;
+  }, [gl, post]);
+  return null;
+}
+
+/** ?quality=high|medium|low låser kvalitetsnivån (ingen automatisk sänkning). */
+const LOCKED_QUALITY = new URLSearchParams(window.location.search).get('quality');
+if (LEVELS.includes(LOCKED_QUALITY)) useStore.getState().setQuality(LOCKED_QUALITY);
+
 export default function Experience({ children }) {
+  const quality = useStore((s) => s.quality);
   const [dpr, setDpr] = useState(Math.min(window.devicePixelRatio, 1.75));
+  const post = quality !== 'low';
+
+  useEffect(() => {
+    // Exponera för skärmdumps-/felsökningsskript.
+    window.__gtQuality = quality;
+  }, [quality]);
+
+  const step = (dir) => {
+    if (LOCKED_QUALITY) return;
+    const s = useStore.getState();
+    const i = LEVELS.indexOf(s.quality);
+    const n = LEVELS[Math.max(0, Math.min(LEVELS.length - 1, i + dir))];
+    if (n !== s.quality) s.setQuality(n);
+  };
+
   return (
     <Canvas
       className="scene-canvas"
       dpr={dpr}
-      camera={{ fov: window.innerWidth < 700 ? 74 : 68, near: 0.05, far: 90, position: [0, 1.6, 12] }}
-      gl={{ antialias: true, powerPreference: 'high-performance', toneMapping: THREE.NeutralToneMapping, preserveDrawingBuffer: false }}
+      camera={{ fov: window.innerWidth < 700 ? 74 : 66, near: 0.05, far: 90, position: [0, 1.6, 12] }}
+      gl={{
+        antialias: !post,
+        powerPreference: 'high-performance',
+        // Med efterbehandling sköts tonmappningen i ToneMapping-effekten.
+        toneMapping: post ? THREE.NoToneMapping : THREE.NeutralToneMapping,
+        stencil: false,
+      }}
       onCreated={({ scene }) => {
         scene.background = new THREE.Color('#ecebe8');
       }}
     >
-      <PerformanceMonitor onDecline={() => setDpr(1)} onIncline={() => setDpr(Math.min(window.devicePixelRatio, 1.75))} />
+      <PerformanceMonitor
+        bounds={(refresh) => (refresh > 90 ? [50, 90] : [45, 60])}
+        flipflops={3}
+        onDecline={() => { step(-1); setDpr((d) => Math.max(1, d - 0.25)); }}
+        onIncline={() => setDpr((d) => Math.min(Math.min(window.devicePixelRatio, 1.75), d + 0.25))}
+      />
       <AdaptiveDpr pixelated={false} />
+      <ToneMapSync post={post} />
       <Lighting />
       <Suspense fallback={null}>
         <Room />
+        <Storefront />
+        <Fixtures />
         {children}
+        <BakedShadows />
       </Suspense>
       <NavMarker />
       <Player />
       <Controls />
+      <Effects quality={quality} />
     </Canvas>
   );
 }

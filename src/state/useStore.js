@@ -28,6 +28,12 @@ export const useStore = create((set, get) => ({
   enter: () => set({ entered: true }),
   isTouch: typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches,
 
+  /** Grafikkvalitet: 'high' (AO, bloom, golvreflexer), 'medium' (AO), 'low'. Sänks automatiskt vid låg fps. */
+  quality: typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches ? 'low' : 'high',
+  setQuality: (quality) => set({ quality }),
+  layoutVersion: 0,
+  bumpLayout: () => set({ layoutVersion: get().layoutVersion + 1 }),
+
   // --- produkter
   products: [],
   productsById: {},

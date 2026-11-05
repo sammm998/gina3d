@@ -33,7 +33,7 @@ img { max-width: 100%; }
 .scene-canvas { position: absolute !important; inset: 0; }
 .canvas-grab canvas, canvas.canvas-grab { cursor: grab; }
 .canvas-grabbing { cursor: grabbing !important; }
-.app.is-hovering canvas { cursor: pointer !important; }
+body.is-hovering canvas { cursor: pointer !important; }
 
 /* ---------- knappar */
 .btn {

@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { MeshReflectorMaterial } from '@react-three/drei';
 import { STORE } from '../config/storeConfig.js';
 import { useStore } from '../state/useStore.js';
 import { floorTexture, glowTexture, mallFloorTexture } from './textures.js';
@@ -32,6 +33,7 @@ function useFloorClick() {
 function Floor() {
   const gl = useThree((s) => s.gl);
   const onClick = useFloorClick();
+  const quality = useStore((s) => s.quality);
   const tex = useMemo(() => {
     const t = floorTexture(gl.capabilities.getMaxAnisotropy()).clone();
     t.needsUpdate = true;
@@ -48,7 +50,24 @@ function Floor() {
     <group>
       <mesh rotation-x={-Math.PI / 2} position={[0, 0, (minZ + maxZ) / 2]} onClick={onClick} userData={{ walkable: true }}>
         <planeGeometry args={[W, D]} />
-        <meshStandardMaterial map={tex} roughness={0.42} metalness={0} envMapIntensity={0.35} />
+        {quality === 'high' ? (
+          <MeshReflectorMaterial
+            map={tex}
+            color="#dcdbd7"
+            resolution={512}
+            blur={[400, 120]}
+            mixBlur={1}
+            mixStrength={0.28}
+            mixContrast={1}
+            mirror={0}
+            depthScale={0}
+            roughness={0.55}
+            metalness={0}
+            envMapIntensity={0.3}
+          />
+        ) : (
+          <meshStandardMaterial map={tex} color="#dcdbd7" roughness={0.42} metalness={0} envMapIntensity={0.35} />
+        )}
       </mesh>
       <mesh rotation-x={-Math.PI / 2} position={[0, 0, maxZ + 3.5]} onClick={onClick} userData={{ walkable: true }}>
         <planeGeometry args={[50, 7]} />
