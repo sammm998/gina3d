@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three-stdlib';
 import { useStore } from '../../state/useStore.js';
-import { accessoryKind, garmentClass, hangLength, primaryHex } from '../../data/productMeta.js';
+import { accessoryKind, fabricKind, garmentClass, hangLength, primaryHex } from '../../data/productMeta.js';
+import { fabricMaterial } from '../textures.js';
 import { requestTexture, useLazyTexture } from '../useLazyTexture.js';
 import { productEvents, useIsHighlighted } from './events.js';
 import { MAT } from '../materials.js';
@@ -148,9 +149,8 @@ const sideGeom = (() => {
 const hookGeom = new THREE.TorusGeometry(0.018, 0.0028, 5, 12, Math.PI * 1.3);
 
 function SideHung({ entries }) {
-  const ref = useRef();
   const hooks = useRef();
-  const { items, ids, colors } = useMemo(() => {
+  const { items } = useMemo(() => {
     const items = [];
     entries.forEach((en, ei) => {
       const { slot, items: prods } = en;
@@ -179,30 +179,52 @@ function SideHung({ entries }) {
         });
       });
     });
-    return { items, ids: items.map((i) => i.p.id), colors: items.map((i) => i.color) };
+    return { items };
   }, [entries]);
 
   useLayoutEffect(() => {
-    items.forEach((it, i) => {
-      ref.current.setMatrixAt(i, compose(it.x, it.y, it.z, it.ry, it.thick, it.L, it.depth, 0, it.rz));
-      hooks.current.setMatrixAt(i, compose(it.x, it.hookY, it.z, it.ry + Math.PI / 2, 1, 1, 1));
-      ref.current.setColorAt(i, _c.set(it.color));
-    });
-    ref.current.instanceMatrix.needsUpdate = true;
+    items.forEach((it, i) => hooks.current.setMatrixAt(i, compose(it.x, it.hookY, it.z, it.ry + Math.PI / 2, 1, 1, 1)));
     hooks.current.instanceMatrix.needsUpdate = true;
-    if (ref.current.instanceColor) ref.current.instanceColor.needsUpdate = true;
-    ref.current.computeBoundingSphere();
   }, [items]);
-  useInstanceHighlight(ref, ids, colors);
-  const ev = useMemo(() => productEvents(null, (e) => ids[e.instanceId]), [ids]);
-  const mat = useMemo(() => new THREE.MeshStandardMaterial({ roughness: 0.9 }), []);
+  const groups = useMemo(() => groupByFabric(items), [items]);
   if (!items.length) return null;
   return (
     <group>
-      <instancedMesh ref={ref} args={[sideGeom, mat, items.length]} {...ev} />
+      {Object.entries(groups).map(([kind, list]) => (
+        <FabricInstances key={kind} kind={kind} geom={sideGeom} items={list} repeat={kind === 'denim' ? 34 : 22}
+          matrixOf={(it) => compose(it.x, it.y, it.z, it.ry, it.thick, it.L, it.depth, 0, it.rz)} />
+      ))}
       <instancedMesh ref={hooks} args={[hookGeom, MAT.chrome, items.length]} raycast={() => null} />
     </group>
   );
+}
+
+/** Delar upp plagg per tygtyp så att varje grupp får rätt tygmaterial (en draw call per typ). */
+function groupByFabric(items) {
+  const g = {};
+  for (const it of items) (g[fabricKind(it.p)] ??= []).push(it);
+  return g;
+}
+
+/** Instansierade plagg med tygmaterial, per-instansfärg, highlight och klick. */
+function FabricInstances({ kind, geom, items, matrixOf, repeat }) {
+  const ref = useRef();
+  const ids = useMemo(() => items.map((i) => i.p.id), [items]);
+  const colors = useMemo(() => items.map((i) => i.color), [items]);
+  const mat = useMemo(() => fabricMaterial(kind, repeat), [kind, repeat]);
+  useLayoutEffect(() => {
+    items.forEach((it, i) => {
+      ref.current.setMatrixAt(i, matrixOf(it));
+      ref.current.setColorAt(i, _c.set(it.color));
+    });
+    ref.current.instanceMatrix.needsUpdate = true;
+    if (ref.current.instanceColor) ref.current.instanceColor.needsUpdate = true;
+    ref.current.computeBoundingSphere();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
+  useInstanceHighlight(ref, ids, colors);
+  const ev = useMemo(() => productEvents(null, (e) => ids[e.instanceId]), [ids]);
+  return <instancedMesh ref={ref} args={[geom, mat, items.length]} {...ev} />;
 }
 
 /* ------------------------------------------------------------------ vikta travar */
@@ -245,8 +267,7 @@ function FoldTops({ productId, list }) {
 }
 
 function FoldStacks({ entries }) {
-  const ref = useRef();
-  const { pieces, ids, colors, tops } = useMemo(() => {
+  const { pieces, tops } = useMemo(() => {
     const pieces = [];
     const tops = {};
     entries.forEach((en, ei) => {
@@ -269,25 +290,17 @@ function FoldStacks({ entries }) {
       const top = pieces[pieces.length - 1];
       (tops[p.id] ??= []).push({ x: top.x, y, z: top.z, ry: top.ry, w, d });
     });
-    return { pieces, ids: pieces.map((i) => i.p.id), colors: pieces.map((i) => i.color), tops };
+    return { pieces, tops };
   }, [entries]);
 
-  useLayoutEffect(() => {
-    pieces.forEach((it, i) => {
-      ref.current.setMatrixAt(i, compose(it.x, it.y, it.z, it.ry, it.w, it.h, it.d));
-      ref.current.setColorAt(i, _c.set(it.color));
-    });
-    ref.current.instanceMatrix.needsUpdate = true;
-    if (ref.current.instanceColor) ref.current.instanceColor.needsUpdate = true;
-    ref.current.computeBoundingSphere();
-  }, [pieces]);
-  useInstanceHighlight(ref, ids, colors);
-  const ev = useMemo(() => productEvents(null, (e) => ids[e.instanceId]), [ids]);
-  const mat = useMemo(() => new THREE.MeshStandardMaterial({ roughness: 0.92 }), []);
+  const groups = useMemo(() => groupByFabric(pieces), [pieces]);
   if (!pieces.length) return null;
   return (
     <group>
-      <instancedMesh ref={ref} args={[foldGeom, mat, pieces.length]} {...ev} />
+      {Object.entries(groups).map(([kind, list]) => (
+        <FabricInstances key={kind} kind={kind} geom={foldGeom} items={list} repeat={kind === 'denim' ? 16 : 10}
+          matrixOf={(it) => compose(it.x, it.y, it.z, it.ry, it.w, it.h, it.d)} />
+      ))}
       {Object.entries(tops).map(([id, list]) => (
         <FoldTops key={id} productId={id} list={list} />
       ))}

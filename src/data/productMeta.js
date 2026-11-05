@@ -95,3 +95,12 @@ export function accessoryKind(p) {
   if (p.category === 'bags' || /väska|bag/.test(n)) return 'bag';
   return 'other';
 }
+
+/** Tygtyp för 3D-materialet: 'denim' | 'knit' | 'woven'. Kan sättas med `fabric` i products.json. */
+export function fabricKind(p) {
+  if (p.fabric) return p.fabric;
+  const n = `${p.name} ${p.category}`.toLowerCase();
+  if (/jeans|denim/.test(n)) return 'denim';
+  if (/stick|knit|ull|kofta|cardigan|mohair/.test(n)) return 'knit';
+  return 'woven';
+}

@@ -25,5 +25,6 @@ export async function loadProducts(url = PATHS.products) {
       productUrl: p.productUrl || 'https://www.ginatricot.com/se',
       tryOnType: p.tryOnType || null,
       tryOnAnchors: p.tryOnAnchors || null,
+      fabric: p.fabric || null,
     }));
 }

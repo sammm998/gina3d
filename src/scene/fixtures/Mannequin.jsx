@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { useIsHighlighted } from '../products/events.js';
 import * as THREE from 'three';
 import { MAT } from '../materials.js';
+import { fabricMaterial } from '../textures.js';
 
 /**
  * Vit, ansiktslös skyltdocka i low poly, byggd av lathe-geometrier.
@@ -32,11 +33,12 @@ const geo = {
 };
 
 const matCache = new Map();
-export function clothMaterial(color) {
-  if (!matCache.has(color)) {
-    matCache.set(color, new THREE.MeshStandardMaterial({ color, roughness: 0.85, side: THREE.DoubleSide }));
+export function clothMaterial(color, fabric = 'woven') {
+  const key = `${color}:${fabric}`;
+  if (!matCache.has(key)) {
+    matCache.set(key, fabricMaterial(fabric, fabric === 'denim' ? 18 : 12, { color, side: THREE.DoubleSide }));
   }
-  return matCache.get(color);
+  return matCache.get(key);
 }
 
 const ARM_X = 0.205;
@@ -61,7 +63,7 @@ function Body() {
 }
 
 function Garment({ piece, eventsFor }) {
-  const m = useMemo(() => clothMaterial(piece.color).clone(), [piece.color]);
+  const m = useMemo(() => clothMaterial(piece.color, piece.fabric).clone(), [piece.color, piece.fabric]);
   const hl = useIsHighlighted(piece.productId);
   useEffect(() => {
     m.emissive.set(hl ? '#ffffff' : '#000000');

@@ -1,5 +1,5 @@
 import { zoneForCategory } from '../../config/zones.js';
-import { garmentClass, isAccessory, isFoldable, primaryHex } from '../../data/productMeta.js';
+import { fabricKind, garmentClass, isAccessory, isFoldable, primaryHex } from '../../data/productMeta.js';
 
 /**
  * Placerar produkterna automatiskt på möblernas produktplatser (slots)
@@ -66,6 +66,7 @@ export function placeProducts(products, fixtures) {
             type: garmentClass(p) === 'outer' && type === 'upper' ? 'outer' : type,
             productId: p.id,
             color: primaryHex(p),
+            fabric: fabricKind(p),
             longSleeve: !/t-shirt|linne|top$/i.test(p.name),
             wide: /wide|vid|bootcut/i.test(p.name),
           });

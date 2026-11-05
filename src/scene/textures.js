@@ -189,3 +189,71 @@ export function loadImage(url) {
     img.src = url;
   });
 }
+
+/**
+ * Procedurella normalkartor för tyg – ger plaggen struktur i ljuset:
+ *   denim  diagonal kypert
+ *   knit   stickade resårer (lodräta maskor)
+ *   woven  fin, oregelbunden väv
+ */
+export function fabricNormalTexture(kind = 'woven') {
+  return cached(`fabric:${kind}`, () => {
+    const S = 256;
+    const h = new Float32Array(S * S);
+    let seed = kind.length * 977;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (let y = 0; y < S; y++) {
+      for (let x = 0; x < S; x++) {
+        let v;
+        if (kind === 'denim') {
+          const d = ((x + y) % 8) / 8; // kypertlinjer
+          v = Math.sin(d * Math.PI * 2) * 0.55 + Math.sin(y * 0.8) * 0.15;
+        } else if (kind === 'knit') {
+          const cx = (x % 12) / 12, cy = (y % 9) / 9;
+          v = Math.sin(cx * Math.PI) * 0.8 - Math.abs(cy - 0.5) * 0.5 * Math.sin(cx * Math.PI);
+        } else {
+          v = (Math.sin(x * 1.6) + Math.sin(y * 1.6)) * 0.18;
+        }
+        h[y * S + x] = v + (rnd() - 0.5) * 0.25;
+      }
+    }
+    const c = canvas(S, S);
+    const g = c.getContext('2d');
+    const img = g.createImageData(S, S);
+    const at = (x, y) => h[((y + S) % S) * S + ((x + S) % S)];
+    const k = kind === 'knit' ? 2.2 : 1.4;
+    for (let y = 0; y < S; y++) {
+      for (let x = 0; x < S; x++) {
+        const dx = (at(x + 1, y) - at(x - 1, y)) * k;
+        const dy = (at(x, y + 1) - at(x, y - 1)) * k;
+        const len = Math.hypot(dx, dy, 1);
+        const i = (y * S + x) * 4;
+        img.data[i] = ((-dx / len) * 0.5 + 0.5) * 255;
+        img.data[i + 1] = ((dy / len) * 0.5 + 0.5) * 255;
+        img.data[i + 2] = ((1 / len) * 0.5 + 0.5) * 255;
+        img.data[i + 3] = 255;
+      }
+    }
+    g.putImageData(img, 0, 0);
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.anisotropy = 4;
+    return tex;
+  });
+}
+
+/** Tygmaterial med sheen (mjuk glans som på riktigt tyg) och normalkarta. */
+export function fabricMaterial(kind = 'woven', repeat = 6, opts = {}) {
+  const tex = fabricNormalTexture(kind).clone();
+  tex.needsUpdate = true;
+  tex.repeat.set(repeat, repeat);
+  return new THREE.MeshPhysicalMaterial({
+    roughness: kind === 'denim' ? 0.88 : 0.82,
+    sheen: kind === 'knit' ? 0.9 : 0.55,
+    sheenRoughness: 0.75,
+    sheenColor: new THREE.Color('#ffffff'),
+    normalMap: tex,
+    normalScale: new THREE.Vector2(kind === 'knit' ? 0.9 : 0.6, kind === 'knit' ? 0.9 : 0.6),
+    ...opts,
+  });
+}
