@@ -59,7 +59,7 @@ export function initShop(dir) {
   } catch {
     /* ingen cache ännu */
   }
-  console.log(`Katalog: ${catalog.length} produkter (${details.size} med detaljer), Stripe ${process.env.STRIPE_SECRET_KEY ? (process.env.STRIPE_SECRET_KEY.startsWith('sk_live') ? 'LIVE' : 'testläge') : 'inte konfigurerat'}`);
+  console.log(`Katalog: ${catalog.length} produkter (${details.size} med detaljer), Stripe ${process.env.STRIPE_SECRET_KEY ? (process.env.STRIPE_SECRET_KEY.includes('_live_') ? 'LIVE (skarpa betalningar)' : 'testläge') : 'inte konfigurerat'}`);
   if (process.env.GT_CRAWL !== '0' && catalog.some((c) => /^https:\/\/www\.ginatricot\.com\//.test(c.url))) setTimeout(crawl, 5000);
 }
 
