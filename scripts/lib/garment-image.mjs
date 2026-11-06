@@ -87,13 +87,8 @@ export async function cutout(file, outFile, { width = 800, tolerance = 26 } = {}
   }
   const coverage = fg / (W * H);
   if (coverage < 0.04 || coverage > 0.92) throw new Error(`friläggningen såg fel ut (täckning ${(coverage * 100).toFixed(0)} %)`);
-  // Modellfoton är beskurna: personen går ut i bildens över- eller underkant.
-  // En ren produktbild har luft runt hela plagget.
-  const margin = 0.012;
-  if (minY < H * margin || maxY > H * (1 - margin)) throw new Error('motivet når bildkanten – troligen ett modellfoto');
-  if (minX < W * 0.004 || maxX > W * (1 - 0.004)) throw new Error('motivet når sidokanten');
-  // Hud inne i motivet (ansikte, armar, ben) avslöjar en modell.
-  // plaggets dominerande färg (median i motivet): hudlika pixlar i den färgen är tyg
+  // Hud inne i motivet (ansikte, armar, ben) avslöjar en modell. Plaggets egen
+  // färg räknas inte (beige/brunt tyg kan likna hud).
   const fgCols = [];
   for (let i = 0; i < W * H; i += 13) if (!bg[i]) fgCols.push(px(i));
   const gm = [0, 1, 2].map((c) => fgCols.map((p) => p[c]).sort((a, b) => a - b)[fgCols.length >> 1] ?? 0);
@@ -105,11 +100,17 @@ export async function cutout(file, outFile, { width = 800, tolerance = 26 } = {}
     if (Math.hypot(r - gm[0], g - gm[1], b - gm[2]) < 48) continue;
     if (r > 95 && g > 40 && b > 20 && r > g && r > b && r - g > 15 && Math.max(r, g, b) - Math.min(r, g, b) > 15 && !(r > 220 && g > 200 && b > 180)) skinFg++;
   }
-  // (beige/brunt tyg kan likna hud – godta en liten andel)
-  if (samples && skinFg / samples > 0.12) throw new Error(`för mycket hudton i motivet (${((skinFg / samples) * 100).toFixed(0)} %)`);
+  const skinShare = samples ? skinFg / samples : 0;
+  if (skinShare > 0.12) throw new Error(`för mycket hudton i motivet (${(skinShare * 100).toFixed(0)} %)`);
+  // Modellfoton är beskurna (personen går ut i kanten) OCH visar hud. Produktbilder
+  // kan också vara tätt beskurna, men har ingen hud – de godkänns.
+  const margin = 0.012;
+  const touches = minY < H * margin || maxY > H * (1 - margin) || minX < W * 0.004 || maxX > W * (1 - 0.004);
+  if (touches && skinShare > 0.015) throw new Error('motivet når bildkanten och visar hud – troligen ett modellfoto');
   const pad = Math.round(Math.max(maxX - minX, maxY - minY) * 0.015);
   const left = Math.max(0, minX - pad), top = Math.max(0, minY - pad);
   const cw = Math.min(W - left, maxX - minX + 1 + pad * 2), ch = Math.min(H - top, maxY - minY + 1 + pad * 2);
+
   // städa kanten: ta bort enstaka lösa pixlar och mjuka upp konturen något
   const A = new Uint8Array(W * H);
   for (let i = 0; i < W * H; i++) A[i] = data[i * 4 + 3];

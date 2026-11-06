@@ -273,7 +273,7 @@ async function importOne({ url, category }, args, canCutout) {
         break;
       } catch (e) {
         lastErr = e;
-        if (/modellfoto|hudton|sidokanten/.test(e.message)) break; // fel bild, inte fel tolerans
+        if (/modellfoto|hudton/.test(e.message)) break; // fel bild, inte fel tolerans
       }
     }
     if (!tryOnImage && process.env.GT_DEBUG) console.warn(`  ! ${path.basename(cand.f)}: ${lastErr?.message}`);
@@ -456,10 +456,13 @@ async function importFromPlan(sitemapUrl, planStr) {
     const { default: sharp } = await import('sharp');
     for (const [n, rel] of uniq.slice(0, Number(process.env.GT_TESTIMG) || 2).entries()) {
       const file = path.join(ROOT, rel.replace(/^\//, ''));
-      const b64 = (await sharp(file).resize({ width: 520 }).jpeg({ quality: 74 }).toBuffer()).toString('base64');
-      const size = 1800;
+      const b64 = (await sharp(file).resize({ width: 420 }).jpeg({ quality: 72 }).toBuffer()).toString('base64');
+      const size = 12000;
       const total = Math.ceil(b64.length / size);
-      for (let i = 0; i < total; i++) console.log(`[testimg:${n}:${i}/${total}]${b64.slice(i * size, (i + 1) * size)}`);
+      for (let i = 0; i < total; i++) {
+        console.log(`[testimg:${n}:${i}/${total}]${b64.slice(i * size, (i + 1) * size)}`);
+        await new Promise((r) => setTimeout(r, 400)); // byggloggen tål inte för snabba, långa rader
+      }
     }
   }
 }
