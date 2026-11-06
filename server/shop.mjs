@@ -238,7 +238,22 @@ async function checkout(req, res, url) {
   params.success_url = `${safeOrigin}/?kop=klart&session_id={CHECKOUT_SESSION_ID}`;
   params.cancel_url = `${safeOrigin}/?kop=avbrutet`;
   try {
-    const session = await stripe('checkout/sessions', params);
+    let session;
+    try {
+      // Konton med "Managed Payments" påslaget tillåter inte leveransadress – stäng av det för köpet
+      session = await stripe('checkout/sessions', { ...params, 'managed_payments[enabled]': 'false' });
+    } catch (e) {
+      if (!/managed_payments|shipping/i.test(e.message)) throw e;
+      console.warn('Stripe: försöker igen utan leveransfält –', e.message);
+      const p2 = { ...params };
+      delete p2['shipping_address_collection[allowed_countries][0]'];
+      try {
+        session = await stripe('checkout/sessions', p2);
+      } catch (e2) {
+        if (!/managed_payments/i.test(e2.message)) throw e2;
+        session = await stripe('checkout/sessions', { ...p2, 'managed_payments[enabled]': 'false' });
+      }
+    }
     return send(res, 200, { url: session.url });
   } catch (e) {
     console.error('Stripe:', e.message);
