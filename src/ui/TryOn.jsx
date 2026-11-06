@@ -20,7 +20,7 @@ const HINT = {
   full: 'Backa så att du syns från axlarna ner till knäna.',
 };
 
-const newFilter = () => new MultiFilter(['cx', 'cy', 'width', 'angle', 'length'], { minCutoff: 1.2, beta: 0.8 });
+const newFilter = () => new MultiFilter(['x1', 'y1', 'x2', 'y2', 'x3', 'y3'], { minCutoff: 1.2, beta: 0.8 });
 
 /** Lägger ett plagg i outfiten: klänning ersätter över-/underdel och tvärtom; klick igen tar bort. */
 function withGarment(outfit, p) {
@@ -198,7 +198,7 @@ export default function TryOn() {
       setStatus('Analyserar bilden …');
       uploadLms.current = await detectImage(c);
       setStatus('');
-      if (!uploadLms.current) setError('Hittade ingen person i bilden. Använd en helfigursbild där du står rakt framifrån.');
+      if (!uploadLms.current) setError('Hittade ingen person i bilden. Använd en bild där hela personen syns – med ansiktet och ner till knäna – gärna rakt framifrån.');
       redrawUpload();
     } catch (e) {
       console.error(e);

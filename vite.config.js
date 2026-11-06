@@ -26,6 +26,11 @@ function staticRootDirs() {
   return {
     name: 'static-root-dirs',
     configureServer(server) {
+      // personalchatten i dev-läge (samma hanterare som i produktion)
+      server.middlewares.use('/api/chat', async (req, res) => {
+        const { handleChat } = await import('./server/chat.mjs');
+        handleChat(req, res);
+      });
       server.middlewares.use((req, res, next) => {
         const url = decodeURIComponent((req.url || '').split('?')[0]);
         for (const [prefix, dir] of Object.entries(STATIC_DIRS)) {

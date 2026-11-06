@@ -396,6 +396,31 @@ function categoryOfUrl(u) {
 }
 
 /**
+ * Hela sortimentet (från sitemapen) till data/catalog.json – används av
+ * personalchatten för att hitta alla plagg, även de som inte finns i butiken.
+ */
+function writeCatalog(pages) {
+  const items = [];
+  for (const u of pages) {
+    if (!isProductUrl(u)) continue;
+    const p = pathOf(u);
+    if (/young|miss-y/.test(p)) continue;
+    const slug = p.split('/').pop();
+    const num = (slug.match(/-(\d{6,})$/) || [])[1];
+    const words = slug.replace(/-\d+$/, '').replace(/-/g, ' ').trim();
+    items.push({
+      id: `gt-${num}`,
+      name: words.charAt(0).toUpperCase() + words.slice(1),
+      category: categoryOfUrl(u) ?? p.split('/')[3] ?? 'other',
+      path: p.split('/').slice(2, -1).join('/'),
+      url: u,
+    });
+  }
+  fs.writeFileSync(path.join(ROOT, 'data', 'catalog.json'), JSON.stringify(items));
+  console.log(`[import] sortimentet: ${items.length} produkter till data/catalog.json`);
+}
+
+/**
  * Importerar enligt en plan, t.ex. "tops:5,jeans:4,dresses:4,outerwear:4,skirts:2,bags:2,shoes:2".
  * Väljer olika modeller (inte färgvarianter av samma plagg) ur sitemapen.
  */
@@ -403,6 +428,7 @@ async function importFromPlan(sitemapUrl, planStr) {
   const plan = Object.fromEntries(planStr.split(',').map((kv) => kv.split(':')).map(([k, v]) => [k.trim(), Number(v) || 0]));
   const pages = await productUrlsFromSitemap(sitemapUrl);
   console.log(`[import] sitemap: ${pages.length} adresser, ${pages.filter(isProductUrl).length} produktsidor`);
+  writeCatalog(pages);
   const freq = {};
   for (const u of pages.filter(isProductUrl)) {
     const k = pathOf(u).split('/').slice(2, 4).join('/');
