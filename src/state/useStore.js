@@ -1,6 +1,23 @@
 import { create } from 'zustand';
 
 const WISHLIST_KEY = 'gt3d.wishlist.v1';
+const CART_KEY = 'gt3d.cart.v1';
+
+function loadCart() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+    return Array.isArray(arr) ? arr.filter((x) => x && typeof x.id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+function saveCart(items) {
+  try {
+    localStorage.setItem(CART_KEY, JSON.stringify(items));
+  } catch {
+    /* privat läge – korgen gäller bara under besöket */
+  }
+}
 
 function loadWishlist() {
   try {
@@ -45,7 +62,7 @@ export const useStore = create((set, get) => ({
   hovered: null, // { id, x, y }
   setHovered: (hovered) => set({ hovered }),
   selectedId: null,
-  select: (selectedId) => set({ selectedId, wishlistOpen: false }),
+  select: (selectedId) => set({ selectedId, wishlistOpen: false, cartOpen: false }),
 
   // --- önskelista (sparas lokalt i webbläsaren)
   wishlist: loadWishlist(),
@@ -56,12 +73,37 @@ export const useStore = create((set, get) => ({
     saveWishlist(next);
     set({ wishlist: next });
   },
-  setWishlistOpen: (wishlistOpen) => set({ wishlistOpen }),
+  setWishlistOpen: (wishlistOpen) => set({ wishlistOpen, cartOpen: false }),
 
-  // --- AR-provning
-  tryOn: { open: false, productId: null },
-  openTryOn: (productId) => set({ tryOn: { open: true, productId }, pointerLocked: false }),
-  closeTryOn: () => set({ tryOn: { open: false, productId: null } }),
+  // --- kundkorg (sparas lokalt i webbläsaren)
+  cart: loadCart(), // [{ key, id, size, color }]
+  cartOpen: false,
+  addToCart: (id, size = null, color = null) => {
+    const key = `${id}|${size ?? ''}|${color ?? ''}`;
+    const cur = get().cart;
+    if (cur.some((x) => x.key === key)) return false;
+    const next = [...cur, { key, id, size, color }];
+    saveCart(next);
+    set({ cart: next });
+    return true;
+  },
+  removeFromCart: (key) => {
+    const next = get().cart.filter((x) => x.key !== key);
+    saveCart(next);
+    set({ cart: next });
+  },
+  setCartOpen: (cartOpen) => set({ cartOpen, wishlistOpen: false, selectedId: cartOpen ? null : get().selectedId }),
+
+  // --- AR-provning (fromCart: visa kundkorgens plagg först och klä på dem direkt)
+  tryOn: { open: false, productId: null, fromCart: false },
+  openTryOn: (productId, fromCart = false) => set({ tryOn: { open: true, productId, fromCart }, pointerLocked: false }),
+  closeTryOn: () => set({ tryOn: { open: false, productId: null, fromCart: false } }),
+  /** Nav-id för en promenad till provrummet; provningen öppnas vid ankomst. */
+  fittingNavId: 0,
+  goToFittingRoom: () => {
+    const id = get().navigateTo(-3.35, -6.35, [-3.35, -7.5], 0);
+    set({ fittingNavId: id, cartOpen: false, selectedId: null });
+  },
 
   // --- navigering
   pointerLocked: false,

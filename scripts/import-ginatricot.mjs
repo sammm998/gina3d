@@ -450,6 +450,18 @@ async function importFromPlan(sitemapUrl, planStr) {
   const uniq = [...new Set(media)];
   fs.writeFileSync(path.join(ROOT, 'data', 'media.json'), JSON.stringify({ campaign: uniq.slice(0, 6), photos: uniq.slice(6, 14).length ? uniq.slice(6, 14) : uniq.slice(0, 8) }, null, 2) + '\n');
   console.log(`[import] skrev ${out.length} riktiga produkter och ${uniq.length} modellfoton`);
+  // Testläge: skriv ut några modellfoton (nedskalade, base64) i byggloggen så att
+  // AR-provningen kan testas mot riktiga personer utanför byggmiljön.
+  if (process.env.GT_TESTIMG) {
+    const { default: sharp } = await import('sharp');
+    for (const [n, rel] of uniq.slice(0, Number(process.env.GT_TESTIMG) || 2).entries()) {
+      const file = path.join(ROOT, rel.replace(/^\//, ''));
+      const b64 = (await sharp(file).resize({ width: 520 }).jpeg({ quality: 74 }).toBuffer()).toString('base64');
+      const size = 1800;
+      const total = Math.ceil(b64.length / size);
+      for (let i = 0; i < total; i++) console.log(`[testimg:${n}:${i}/${total}]${b64.slice(i * size, (i + 1) * size)}`);
+    }
+  }
 }
 
 /** Läge för byggservern (t.ex. Railway): styrs av miljövariabler och fäller aldrig bygget. */

@@ -14,6 +14,8 @@ function Icon({ name }) {
     play: 'M8 5v14l11-7z',
     stop: 'M7 7h10v10H7z',
     mouse: 'M12 3a5 5 0 0 0-5 5v8a5 5 0 0 0 10 0V8a5 5 0 0 0-5-5zm0 0v5',
+    bag: 'M5 8h14l-1 12H6L5 8zm4 0V6a3 3 0 0 1 6 0v2',
+    chat: 'M4 5h16v11H9l-5 4V5z',
   };
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" aria-hidden="true">
@@ -41,6 +43,17 @@ export default function Hud() {
   const tour = useStore((s) => s.tour);
   const wishCount = useStore((s) => s.wishlist.length);
   const setWishlistOpen = useStore((s) => s.setWishlistOpen);
+  const cartCount = useStore((s) => s.cart.length);
+  const setCartOpen = useStore((s) => s.setCartOpen);
+  const arrived = useStore((s) => s.arrivedNavId);
+  const fittingNavId = useStore((s) => s.fittingNavId);
+  // framme i provrummet → öppna provningen med kundkorgens plagg
+  useEffect(() => {
+    if (fittingNavId && arrived === fittingNavId) {
+      useStore.setState({ fittingNavId: 0 });
+      useStore.getState().openTryOn(null, true);
+    }
+  }, [arrived, fittingNavId]);
   const [mapOpen, setMapOpen] = useState(() => window.innerWidth > 900);
 
   return (
@@ -61,6 +74,11 @@ export default function Hud() {
           <button className={`btn btn--ghost ${mapOpen ? 'is-on' : ''}`} onClick={() => setMapOpen((v) => !v)} aria-pressed={mapOpen}>
             <Icon name="map" />
             <span className="hide-sm">{t('hud.map')}</span>
+          </button>
+          <button className="btn btn--ghost" onClick={() => setCartOpen(true)} aria-label="Kundkorg">
+            <Icon name="bag" />
+            <span className="hide-sm">Kundkorg</span>
+            {cartCount > 0 && <span className="badge">{cartCount}</span>}
           </button>
           <button className="btn btn--ghost" onClick={() => setWishlistOpen(true)} aria-label={t('hud.wishlist')}>
             <Icon name="heart" />

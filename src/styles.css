@@ -267,3 +267,11 @@ a.btn { text-decoration: none; }
 .minimap__levels { display: flex; gap: 6px; margin-bottom: 8px; }
 .chip.is-active { background: var(--black); color: var(--white); border-color: var(--black); }
 .minimap__escalator { fill: #cfd3d6; stroke: #111; stroke-width: 0.06; pointer-events: none; }
+.link-row { display: block; font-size: 13px; color: var(--ink); padding: 6px 0; border-bottom: 1px solid var(--line); text-decoration: none; }
+.link-row:hover { text-decoration: underline; }
+.panel__note--warn { color: #9a3a1a; }
+.outfit { display: grid; gap: 6px; }
+.outfit__item { display: grid; grid-template-columns: 76px 1fr auto; align-items: center; gap: 8px; text-align: left; border: 1px solid var(--line); background: var(--white); padding: 8px 10px; cursor: pointer; font-size: 13px; }
+.outfit__item.is-active { border-color: var(--black); }
+.outfit__item strong { font-weight: 500; }
+.outfit__slot { text-transform: uppercase; letter-spacing: 0.1em; font-size: 10px; color: var(--muted); }

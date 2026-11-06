@@ -9,7 +9,10 @@ import { listProviders } from '../tryon/providers/index.js';
 import { loadImage } from '../scene/textures.js';
 
 const DEFAULT_ADJUST = { scale: 1, offsetX: 0, offsetY: 0 };
-const HOLD_MS = 700; // hur länge plagget ligger kvar om kroppen tappas
+const HOLD_MS = 700; // hur länge plaggen ligger kvar om kroppen tappas
+/** Ritordning: byxor/kjol under, klänning, överdel ytterst. */
+const SLOTS = ['lower', 'full', 'upper'];
+const SLOT_LABEL = { upper: 'Överdel', lower: 'Underdel', full: 'Klänning' };
 
 const HINT = {
   upper: 'Ställ dig 1–2 meter från kameran så att axlar och höfter syns.',
@@ -17,17 +20,41 @@ const HINT = {
   full: 'Backa så att du syns från axlarna ner till knäna.',
 };
 
+const newFilter = () => new MultiFilter(['cx', 'cy', 'width', 'angle', 'length'], { minCutoff: 1.2, beta: 0.8 });
+
+/** Lägger ett plagg i outfiten: klänning ersätter över-/underdel och tvärtom; klick igen tar bort. */
+function withGarment(outfit, p) {
+  const slot = tryOnType(p);
+  if (!slot) return outfit;
+  if (outfit[slot] === p.id) {
+    const next = { ...outfit };
+    delete next[slot];
+    return next;
+  }
+  if (slot === 'full') return { full: p.id };
+  const next = { ...outfit, [slot]: p.id };
+  delete next.full;
+  return next;
+}
+
 export default function TryOn() {
-  const { open, productId } = useStore((s) => s.tryOn);
+  const { open, productId, fromCart } = useStore((s) => s.tryOn);
   const products = useStore((s) => s.products);
+  const cart = useStore((s) => s.cart);
   const close = useStore((s) => s.closeTryOn);
   const tryables = useMemo(() => products.filter(canTryOn), [products]);
+  const byId = useMemo(() => Object.fromEntries(tryables.map((p) => [p.id, p])), [tryables]);
+  const cartTryables = useMemo(
+    () => [...new Set(cart.map((c) => c.id))].map((id) => byId[id]).filter(Boolean),
+    [cart, byId]
+  );
 
-  const [garmentId, setGarmentId] = useState(null);
+  const [outfit, setOutfit] = useState({}); // { upper?: id, lower?: id, full?: id }
+  const [activeSlot, setActiveSlot] = useState('upper');
+  const [adjusts, setAdjusts] = useState({}); // slot -> { scale, offsetX, offsetY }
   const [mode, setMode] = useState(null); // 'camera' | 'upload'
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
-  const [adjust, setAdjust] = useState(DEFAULT_ADJUST);
   const [poseReady, setPoseReady] = useState(false);
   const [providerId, setProviderId] = useState('local-2d');
   const [consent, setConsent] = useState(false);
@@ -38,23 +65,40 @@ export default function TryOn() {
   const videoRef = useRef(null);
   const rawRef = useRef(null); // bild utan plagg (för extern tjänst)
   const streamRef = useRef(null);
-  const garmentImg = useRef(null);
+  const imgs = useRef(new Map()); // produkt-id -> HTMLImageElement
   const uploadImg = useRef(null);
-  const uploadFrame = useRef(null);
-  const adjustRef = useRef(adjust);
-  const live = useRef({ frame: null, at: 0, busy: false, lastVideoTime: -1 });
-  const filter = useRef(new MultiFilter(['cx', 'cy', 'width', 'angle', 'length'], { minCutoff: 1.2, beta: 0.8 }));
+  const uploadLms = useRef(null);
+  const live = useRef({ frames: {}, busy: false, lastVideoTime: -1 });
+  const filters = useRef({ upper: newFilter(), lower: newFilter(), full: newFilter() });
+  const hintRef = useRef('');
+
+  // Värden som realtidsloopen läser (uppdateras varje rendering).
+  const state = useRef({});
+  state.current = { outfit, adjusts, poseReady, byId };
 
   const providers = listProviders();
   const provider = providers.find((p) => p.id === providerId) ?? providers[0];
-  const product = tryables.find((p) => p.id === garmentId) ?? null;
-  const type = product ? tryOnType(product) : 'upper';
-  adjustRef.current = adjust;
+  const worn = SLOTS.filter((s) => outfit[s]).map((s) => ({ slot: s, p: byId[outfit[s]] })).filter((x) => x.p);
+  const activeProduct = byId[outfit[activeSlot]] ?? worn.at(-1)?.p ?? null;
+  const adjust = adjusts[activeSlot] ?? DEFAULT_ADJUST;
 
-  // Öppna med vald produkt (eller första provbara).
+  // Öppna: från kundkorgen klär vi på en överdel + underdel (eller en klänning).
   useEffect(() => {
     if (!open) return;
-    setGarmentId((productId && tryables.find((p) => p.id === productId)?.id) || tryables[0]?.id || null);
+    let o = {};
+    if (fromCart && cartTryables.length) {
+      for (const p of cartTryables) {
+        const slot = tryOnType(p);
+        if (slot === 'full' && !o.upper && !o.lower && !o.full) o = { full: p.id };
+        else if (slot !== 'full' && !o.full && !o[slot]) o[slot] = p.id;
+      }
+    } else {
+      const p = (productId && byId[productId]) || tryables[0];
+      if (p) o = withGarment({}, p);
+    }
+    setOutfit(o);
+    setActiveSlot(Object.keys(o).find((k) => k === 'upper') || Object.keys(o)[0] || 'upper');
+    setAdjusts({});
     setError('');
     setResult(null);
     setStatus('Laddar kroppsigenkänning …');
@@ -67,18 +111,21 @@ export default function TryOn() {
         console.error(e);
         setError('Kroppsigenkänningen kunde inte laddas. Kontrollera nätverket och försök igen.');
       });
-  }, [open, productId, tryables]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, productId, fromCart]);
 
-  // Läs in plaggets tryOnImage.
+  // Läs in plaggbilderna för outfiten.
   useEffect(() => {
-    if (!product) return;
-    let alive = true;
-    loadImage(product.tryOnImage).then((img) => alive && (garmentImg.current = img)).catch(() => setError('Plaggbilden kunde inte läsas.'));
-    filter.current.reset();
-    setAdjust(DEFAULT_ADJUST);
+    for (const id of Object.values(outfit)) {
+      if (imgs.current.has(id) || !byId[id]) continue;
+      imgs.current.set(id, null);
+      loadImage(byId[id].tryOnImage)
+        .then((img) => imgs.current.set(id, img))
+        .catch(() => setError('En plaggbild kunde inte läsas.'));
+    }
+    Object.values(filters.current).forEach((f) => f.reset());
     setResult(null);
-    return () => { alive = false; };
-  }, [product]);
+  }, [outfit, byId]);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -86,7 +133,6 @@ export default function TryOn() {
     if (videoRef.current) videoRef.current.srcObject = null;
   }, []);
 
-  // Stäng: stoppa kameran.
   useEffect(() => {
     if (!open) {
       stopCamera();
@@ -94,10 +140,8 @@ export default function TryOn() {
       uploadImg.current = null;
     }
   }, [open, stopCamera]);
-
   useEffect(() => () => stopCamera(), [stopCamera]);
 
-  // Esc stänger.
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => e.key === 'Escape' && close();
@@ -124,8 +168,8 @@ export default function TryOn() {
       const v = videoRef.current;
       v.srcObject = stream;
       await v.play();
-      filter.current.reset();
-      live.current = { frame: null, at: 0, busy: false, lastVideoTime: -1 };
+      Object.values(filters.current).forEach((f) => f.reset());
+      live.current = { frames: {}, busy: false, lastVideoTime: -1 };
     } catch (e) {
       setError(
         e?.name === 'NotAllowedError'
@@ -144,7 +188,6 @@ export default function TryOn() {
     const url = URL.createObjectURL(file);
     try {
       const img = await loadImage(url);
-      // skala ner stora bilder för snabbare analys
       const max = 1600;
       const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
       const c = document.createElement('canvas');
@@ -153,16 +196,28 @@ export default function TryOn() {
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
       uploadImg.current = c;
       setStatus('Analyserar bilden …');
-      const lms = await detectImage(c);
-      uploadFrame.current = { lms };
+      uploadLms.current = await detectImage(c);
       setStatus('');
-      if (!lms) setError('Hittade ingen person i bilden. Använd en helfigursbild där du står rakt framifrån.');
+      if (!uploadLms.current) setError('Hittade ingen person i bilden. Använd en helfigursbild där du står rakt framifrån.');
       redrawUpload();
     } catch (e) {
       console.error(e);
       setError('Bilden kunde inte läsas.');
     } finally {
       URL.revokeObjectURL(url);
+    }
+  }
+
+  /** Ritar alla plagg i outfiten på ctx. frames: slot -> kroppsram. */
+  function drawOutfit(ctx, W, frames, alphaOf = () => 1) {
+    const { outfit: o, adjusts: a, byId: b } = state.current;
+    for (const slot of SLOTS) {
+      const id = o[slot];
+      const p = b[id];
+      const img = imgs.current.get(id);
+      const f = frames[slot];
+      if (!p || !img || !f) continue;
+      drawGarment(ctx, img, f, anchorsFor(p, slot), W, a[slot] ?? DEFAULT_ADJUST, alphaOf(slot));
     }
   }
 
@@ -175,26 +230,32 @@ export default function TryOn() {
     const ctx = canvas.getContext('2d');
     ctx.drawImage(src, 0, 0);
     rawRef.current = src;
-    const lms = uploadFrame.current?.lms;
-    const p = tryables.find((x) => x.id === garmentId);
-    if (!lms || !p || !garmentImg.current) return;
-    const t = tryOnType(p);
-    const frame = bodyFrame(lms, t, src.width, src.height, false);
-    if (!frame) {
-      setStatus(HINT[t]);
-      return;
+    const lms = uploadLms.current;
+    if (!lms) return;
+    const frames = {};
+    const missing = [];
+    for (const slot of SLOTS) {
+      if (!state.current.outfit[slot]) continue;
+      frames[slot] = bodyFrame(lms, slot, src.width, src.height, false);
+      if (!frames[slot]) missing.push(slot);
     }
-    setStatus('');
-    drawGarment(ctx, garmentImg.current, frame, anchorsFor(p, t), src.width, adjustRef.current);
+    setStatus(missing.length ? HINT[missing[0]] : '');
+    drawOutfit(ctx, src.width, frames);
   }
 
-  // Rita om uppladdad bild när plagg eller reglage ändras.
+  // Rita om uppladdad bild när plagg eller reglage ändras (vänta in plaggbilder).
   useEffect(() => {
     if (mode !== 'upload') return;
-    const id = setTimeout(redrawUpload, 30);
+    const ids = Object.values(outfit);
+    let tries = 0;
+    const tick = () => {
+      if (ids.every((id) => imgs.current.get(id)) || tries++ > 40) redrawUpload();
+      else id = setTimeout(tick, 50);
+    };
+    let id = setTimeout(tick, 20);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, adjust, garmentId]);
+  }, [mode, adjusts, outfit]);
 
   // Realtidsloop för webbkameran.
   useEffect(() => {
@@ -216,46 +277,45 @@ export default function TryOn() {
       ctx.scale(-1, 1);
       ctx.drawImage(v, 0, 0, W, H);
       ctx.restore();
-      const rctx = raw.getContext('2d');
-      rctx.drawImage(canvas, 0, 0);
+      raw.getContext('2d').drawImage(canvas, 0, 0);
 
       const L = live.current;
       const now = performance.now();
-      const p = productRef.current;
-      if (poseReadyRef.current && !L.busy && v.currentTime !== L.lastVideoTime && p) {
+      const { outfit: o, poseReady: ready } = state.current;
+      const slots = SLOTS.filter((s) => o[s]);
+      if (ready && slots.length && !L.busy && v.currentTime !== L.lastVideoTime) {
         L.busy = true;
         L.lastVideoTime = v.currentTime;
         detectVideo(v, now)
           .then((lms) => {
-            const f = bodyFrame(lms, tryOnType(p), W, H, true);
-            if (f) {
-              L.frame = filter.current.filter(f, now / 1000);
-              L.at = performance.now();
+            for (const slot of slots) {
+              const f = bodyFrame(lms, slot, W, H, true);
+              if (f) L.frames[slot] = { frame: filters.current[slot].filter(f, now / 1000), at: performance.now() };
             }
           })
           .catch(() => {})
           .finally(() => (L.busy = false));
       }
-      const age = now - L.at;
-      if (L.frame && age < HOLD_MS && garmentImg.current && p) {
-        const alpha = age < 250 ? 1 : 1 - (age - 250) / (HOLD_MS - 250);
-        drawGarment(ctx, garmentImg.current, L.frame, anchorsFor(p, tryOnType(p)), W, adjustRef.current, alpha);
-        if (hintRef.current) setStatus((hintRef.current = ''));
-      } else if (poseReadyRef.current && p && !hintRef.current) {
-        hintRef.current = HINT[tryOnType(p)];
-        setStatus(hintRef.current);
-        filter.current.reset();
+      const frames = {};
+      let missing = null;
+      for (const slot of slots) {
+        const fr = L.frames[slot];
+        if (fr && now - fr.at < HOLD_MS) frames[slot] = fr.frame;
+        else {
+          missing ??= slot;
+          filters.current[slot].reset();
+        }
       }
+      drawOutfit(ctx, W, frames, (slot) => {
+        const age = now - (L.frames[slot]?.at ?? 0);
+        return age < 250 ? 1 : Math.max(0, 1 - (age - 250) / (HOLD_MS - 250));
+      });
+      const hint = ready && missing ? HINT[missing] : '';
+      if (hint !== hintRef.current) setStatus((hintRef.current = hint));
     };
     tick();
     return () => cancelAnimationFrame(raf);
   }, [open, mode]);
-
-  const productRef = useRef(product);
-  productRef.current = product;
-  const poseReadyRef = useRef(poseReady);
-  poseReadyRef.current = poseReady;
-  const hintRef = useRef('');
 
   function screenshot() {
     const canvas = canvasRef.current;
@@ -267,9 +327,9 @@ export default function TryOn() {
     ctx.drawImage(canvas, 0, 0);
     const fs = Math.max(12, Math.round(out.width / 70));
     ctx.font = `400 ${fs}px Inter Variable, Inter, Arial, sans-serif`;
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    const label = `${product?.name ?? ''} · Virtuell provning (2D-överlagring)`;
+    const label = `${worn.map((w) => w.p.name).join(' + ')} · Virtuell provning (2D-överlagring)`;
     const tw = ctx.measureText(label).width;
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
     ctx.fillRect(fs * 0.8, out.height - fs * 2.6, tw + fs * 1.4, fs * 1.8);
     ctx.fillStyle = '#111';
     ctx.fillText(label, fs * 1.5, out.height - fs * 1.35);
@@ -277,7 +337,7 @@ export default function TryOn() {
       if (!blob) return;
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `provning-${product?.id ?? 'bild'}.png`;
+      a.download = 'provning.png';
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -286,13 +346,15 @@ export default function TryOn() {
   }
 
   async function runExternal() {
-    if (!provider || provider.realtime || !rawRef.current || !garmentImg.current || !product) return;
+    const p = activeProduct;
+    const img = p && imgs.current.get(p.id);
+    if (!provider || provider.realtime || !rawRef.current || !img) return;
     setBusy(true);
     setError('');
     try {
-      const res = await provider.render({ person: rawRef.current, product, garmentImage: garmentImg.current, adjust });
-      const img = res.image;
-      const url = img instanceof Blob ? URL.createObjectURL(img) : img.src || img.toDataURL?.();
+      const res = await provider.render({ person: rawRef.current, product: p, garmentImage: img, adjust });
+      const im = res.image;
+      const url = im instanceof Blob ? URL.createObjectURL(im) : im.src || im.toDataURL?.();
       setResult({ url, note: res.note });
     } catch (e) {
       setError(`Den externa tjänsten svarade inte: ${e.message}`);
@@ -301,8 +363,25 @@ export default function TryOn() {
     }
   }
 
+  const choose = (p) => {
+    const next = withGarment(outfit, p);
+    setOutfit(next);
+    const slot = tryOnType(p);
+    if (next[slot]) setActiveSlot(slot);
+  };
+  const setAdjust = (fn) => setAdjusts((a) => ({ ...a, [activeSlot]: fn(a[activeSlot] ?? DEFAULT_ADJUST) }));
+
   if (!open) return null;
   const sends = provider?.sendsImagesToServer;
+  const others = tryables.filter((p) => !cartTryables.includes(p));
+  const GarmentButton = ({ p }) => {
+    const on = Object.values(outfit).includes(p.id);
+    return (
+      <button className={`garment ${on ? 'is-active' : ''}`} onClick={() => choose(p)} title={`${p.name} – ${SLOT_LABEL[tryOnType(p)]}`} aria-pressed={on} aria-label={p.name}>
+        <img src={p.tryOnImage} alt="" loading="lazy" decoding="async" />
+      </button>
+    );
+  };
 
   return (
     <div className="tryon" role="dialog" aria-label="Virtuell provning">
@@ -313,7 +392,7 @@ export default function TryOn() {
         {!mode && (
           <div className="tryon__empty">
             <p className="eyebrow">Virtuell provning</p>
-            <p>Välj webbkamera eller ladda upp en helfigursbild för att prova plagget.</p>
+            <p>Välj webbkamera eller ladda upp en helfigursbild för att prova {worn.length > 1 ? 'outfiten' : 'plagget'}.</p>
             <div className="tryon__modes">
               <button className="btn btn--primary" onClick={startCamera}>Använd webbkamera</button>
               <label className="btn">
@@ -329,7 +408,7 @@ export default function TryOn() {
 
       <aside className="tryon__side">
         <div className="panel__head tryon__head">
-          <p className="eyebrow">Virtuell provning</p>
+          <p className="eyebrow">{fromCart ? 'Provrummet' : 'Virtuell provning'}</p>
           <button className="panel__close" onClick={close} aria-label="Stäng provningen">×</button>
         </div>
 
@@ -354,30 +433,39 @@ export default function TryOn() {
           </label>
         </div>
 
-        {product && (
-          <div className="tryon__product">
-            <strong>{product.name}</strong>
-            <span>{formatPrice(product.price, product.currency)}</span>
+        {worn.length > 0 && (
+          <div className="outfit">
+            {worn.map(({ slot, p }) => (
+              <button key={slot} className={`outfit__item ${slot === activeSlot ? 'is-active' : ''}`} onClick={() => setActiveSlot(slot)}>
+                <span className="outfit__slot">{SLOT_LABEL[slot]}</span>
+                <strong>{p.name}</strong>
+                <span>{formatPrice(p.price, p.currency)}</span>
+              </button>
+            ))}
           </div>
         )}
 
+        {cartTryables.length > 0 && (
+          <div className="panel__group">
+            <p className="panel__label">Från din kundkorg</p>
+            <div className="garments">
+              {cartTryables.map((p) => <GarmentButton key={p.id} p={p} />)}
+            </div>
+          </div>
+        )}
         <div className="panel__group">
-          <p className="panel__label">Byt plagg</p>
+          <p className="panel__label">{cartTryables.length ? 'Fler plagg' : 'Välj plagg'} – kombinera överdel och underdel</p>
           <div className="garments">
-            {tryables.map((p) => (
-              <button key={p.id} className={`garment ${p.id === garmentId ? 'is-active' : ''}`} onClick={() => setGarmentId(p.id)} title={p.name} aria-label={p.name}>
-                <img src={p.tryOnImage} alt="" loading="lazy" decoding="async" />
-              </button>
-            ))}
+            {others.map((p) => <GarmentButton key={p.id} p={p} />)}
           </div>
         </div>
 
         <div className="panel__group">
-          <p className="panel__label">Justera</p>
+          <p className="panel__label">Justera {activeProduct ? `– ${SLOT_LABEL[activeSlot].toLowerCase()}` : ''}</p>
           <Slider label="Storlek" min={0.6} max={1.6} step={0.01} value={adjust.scale} onChange={(v) => setAdjust((a) => ({ ...a, scale: v }))} format={(v) => `${Math.round(v * 100)} %`} />
           <Slider label="Sidled" min={-0.6} max={0.6} step={0.01} value={adjust.offsetX} onChange={(v) => setAdjust((a) => ({ ...a, offsetX: v }))} />
           <Slider label="Höjd" min={-0.8} max={0.8} step={0.01} value={adjust.offsetY} onChange={(v) => setAdjust((a) => ({ ...a, offsetY: v }))} />
-          <button className="btn btn--ghost-plain" onClick={() => setAdjust(DEFAULT_ADJUST)}>Återställ</button>
+          <button className="btn btn--ghost-plain" onClick={() => setAdjust(() => DEFAULT_ADJUST)}>Återställ</button>
         </div>
 
         {providers.length > 1 && (
@@ -406,7 +494,7 @@ export default function TryOn() {
         </div>
 
         <p className="panel__note">
-          <strong>Ärligt om tekniken:</strong> detta är en förenklad 2D-överlagring – plaggbilden skalas, roteras och placeras efter
+          <strong>Ärligt om tekniken:</strong> detta är en förenklad 2D-överlagring – plaggbilderna skalas, roteras och placeras efter
           axlar, höfter och knän. Det är ingen fysisk tygsimulering, så passform, veck och fall kan skilja sig från verkligheten.
           Använd storleksguiden på ginatricot.com för att välja storlek.
         </p>

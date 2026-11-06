@@ -78,12 +78,16 @@ export default function ProductPanel() {
   const product = useStore((s) => (s.selectedId ? s.productsById[s.selectedId] : null));
   const select = useStore((s) => s.select);
   const openTryOn = useStore((s) => s.openTryOn);
+  const addToCart = useStore((s) => s.addToCart);
+  const showToast = useStore((s) => s.showToast);
+  const [needSize, setNeedSize] = useState(false);
   const [color, setColor] = useState(0);
   const [size, setSize] = useState(null);
 
   useEffect(() => {
     setColor(0);
     setSize(null);
+    setNeedSize(false);
   }, [product?.id]);
 
   useEffect(() => {
@@ -149,7 +153,23 @@ export default function ProductPanel() {
         )}
 
         <div className="panel__actions">
-          <button className="btn btn--primary btn--block" disabled={!tryable} onClick={() => openTryOn(product.id)}>
+          <button
+            className="btn btn--primary btn--block"
+            onClick={() => {
+              const multiSize = product.sizes.length > 1;
+              if (multiSize && !size) {
+                setNeedSize(true);
+                return;
+              }
+              const s = size ?? product.sizes[0] ?? null;
+              const added = addToCart(product.id, s, product.colors[color] ?? null);
+              showToast(added ? `${product.name} ligger i kundkorgen` : 'Finns redan i kundkorgen');
+            }}
+          >
+            Lägg i kundkorgen
+          </button>
+          {needSize && !size && <p className="panel__note panel__note--warn">Välj en storlek först.</p>}
+          <button className="btn btn--block" disabled={!tryable} onClick={() => openTryOn(product.id)}>
             {t('product.tryOn')}
           </button>
           {!tryable && <p className="panel__note">{t('product.noTryOn')}</p>}
