@@ -74,7 +74,7 @@ const curvedPlane = (() => {
 
 function FaceOut({ entry }) {
   const { product: p, slot } = entry;
-  const tex = useLazyTexture(p.tryOnImage || p.images[0], slot.pos, 15);
+  const tex = useLazyTexture(p.tryOnImage, slot.pos, 15);
   const hl = useIsHighlighted(p.id);
   const L = hangLength(p);
   const isLower = garmentClass(p) === 'lower' || garmentClass(p) === 'skirt';

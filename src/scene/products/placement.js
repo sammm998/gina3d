@@ -40,10 +40,8 @@ export function placeProducts(products, fixtures) {
     if (f.pool === 'accessories') list = accessories;
     if (!list.length) list = kind === 'fold' ? garments.filter(isFoldable) : garments;
     // framåtvända plagg kräver en frilagd bild för att se riktiga ut
-    if (kind === 'faceout') {
-      const cut = list.filter((p) => p.tryOnImage);
-      if (cut.length) list = cut;
-    }
+    // (aldrig ett modellfoto på en galge – utan frilagd bild står platsen tom)
+    if (kind === 'faceout') list = list.filter((p) => p.tryOnImage);
     return list;
   };
 

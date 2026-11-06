@@ -251,25 +251,34 @@ async function importOne({ url, category }, args, canCutout) {
   let tryOnImage = fs.existsSync(tryOnFile) ? `${PUBLIC_PREFIX}/${p.id}-tryon.png` : null;
   const accessory = ['bags', 'shoes', 'accessories'].includes(cat);
   const stats = [];
+  let packshotFile = null;
   for (const f of files) {
     try { stats.push({ f, ...(await classify(f)) }); } catch { /* hoppa över */ }
   }
   stats.sort((a, b) => a.score - b.score);
   if (process.env.GT_DEBUG) console.log(`  bilder: ${stats.map((x) => `${path.basename(x.f)} hud=${x.skin.toFixed(2)} kant=${x.borderStd.toFixed(0)}`).join(' | ')}`);
-  const pack = stats[0];
+  let pack = stats[0];
   let anchorsOut = null;
-  if (!tryOnImage && pack && pack.skin < 0.06 && pack.borderStd < 18) {
+  // Pröva kandidaterna i tur och ordning (bäst först) tills en ren produktbild
+  // går att frilägga. Modellfoton underkänns av cutoutBg (kant/hud).
+  for (const cand of stats.filter((x) => x.skin < 0.06 && x.borderStd < 18)) {
+    if (tryOnImage) break;
+    let lastErr = null;
     // ljusa plagg mot ljus bakgrund: försök igen med allt lägre tolerans
     for (const tolerance of [26, 14, 8, 5]) {
       try {
-        await cutoutBg(pack.f, tryOnFile, { tolerance });
+        await cutoutBg(cand.f, tryOnFile, { tolerance });
         tryOnImage = `${PUBLIC_PREFIX}/${p.id}-tryon.png`;
+        pack = cand;
         break;
       } catch (e) {
-        if (tolerance === 5) console.warn(`  ! friläggning: ${e.message}`);
+        lastErr = e;
+        if (/modellfoto|hudton|sidokanten/.test(e.message)) break; // fel bild, inte fel tolerans
       }
     }
+    if (!tryOnImage && process.env.GT_DEBUG) console.warn(`  ! ${path.basename(cand.f)}: ${lastErr?.message}`);
   }
+  if (tryOnImage) packshotFile = pack.f;
   if (!tryOnImage && canCutout) {
     try {
       await cutout(pack?.f ?? files[0], tryOnFile);
@@ -301,6 +310,7 @@ async function importOne({ url, category }, args, canCutout) {
   };
   if (!tryOnImage && !accessory) entry.tryOnType = 'none';
   if (anchorsOut) entry.tryOnAnchors = anchorsOut;
+  if (tryOnImage && packshotFile) entry.cutout = 'packshot';
   if (p.material) entry.material = p.material;
   Object.defineProperty(entry, 'modelPhotos', { value: modelPhotos, enumerable: false });
   return entry;

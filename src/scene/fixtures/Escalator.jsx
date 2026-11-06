@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { ESCALATORS, FLOOR_H, rampHeight as rampH, voidOf } from '../../config/storeConfig.js';
+import { ESCALATORS, FLOOR_H, STORE, rampHeight as rampH, voidOf } from '../../config/storeConfig.js';
 import { MAT } from '../materials.js';
 
 /**
@@ -59,8 +59,12 @@ function Steps({ E, G, lane }) {
     offset.current = (offset.current + lane.dir * E.speed * Math.min(dt, 0.05) + TOTAL) % TOTAL;
     for (let i = 0; i < n; i++) {
       const s = (i * STEP + offset.current) % TOTAL;
-      const [z, y] = pathAt(s);
-      const hide = s < 0.05 || s > TOTAL - 0.05;
+      const [z, y0] = pathAt(s);
+      // Vid ändarna sjunker stegen in under kamplattan och försvinner – inget
+      // steg sticker ut förbi trappans slut.
+      const end = Math.min(s, TOTAL - s);
+      const hide = end < 0.3;
+      const y = y0 - Math.max(0, 0.8 - end) * 0.22;
       m.makeTranslation(lane.x, y - 0.1 + STEP_LIFT, z);
       if (hide) m.scale(new THREE.Vector3(0, 0, 0));
       ref.current.setMatrixAt(i, m);
@@ -97,8 +101,6 @@ function Balustrade({ E, G, x, outer }) {
   const z0 = E.zEntry + 0.15, z1 = E.zExit - 0.15;
   const glass = useMemo(() => bandShape(E, z0, z1, 0.14, 0.92), [E]);
   const skirt = useMemo(() => bandShape(E, z0, z1, 0.0, 0.14), [E]);
-  // inklädnad under trappan: ner till golvet nertill, ca 1 m tjock i lutningen
-  const clad = useMemo(() => bandShape(E, z0 - 0.3, z1 + 0.05, 0, -0.02, (z) => Math.max(0.002, rampHeight(z) - 1.05)), [E]);
   const rail = useMemo(() => {
     const pts = [];
     for (let s = 0; s <= 1.0001; s += 0.02) {
@@ -113,20 +115,46 @@ function Balustrade({ E, G, x, outer }) {
       <mesh geometry={glass} material={matGlass} renderOrder={3} />
       <mesh geometry={skirt} material={matSteel} />
       <mesh geometry={rail} material={matRubber} />
-      {outer && <mesh geometry={clad} material={matCladding} position-x={outer * 0.02} />}
     </group>
   );
 }
 
-/** Undersida av trappan (lutande, plåtklädd). */
-function Underside({ E, G }) {
+/**
+ * Trappans bärverk som en sluten, plåtklädd kropp: sidor, undersida och ändar
+ * i ett stycke. Nertill vilar den på golvet, upptill går undersidan upp till
+ * bjälklagets underkant så att inget "hänger" under övre planets kant.
+ */
+function Truss({ E, G }) {
   const geom = useMemo(() => {
-    const g = new THREE.PlaneGeometry(E.maxX - E.minX + 0.04, G.incl + 0.2);
-    g.rotateX(Math.PI / 2 - Math.atan2(E.rise, E.zTop - E.zBottom));
+    const SLAB_UNDER = STORE.height; // takets höjd över trappans nedre våning
+    const z0 = E.zEntry + 0.1, z1 = E.zExit - 0.05;
+    const top = (z) => G.rampHeight(z) - 0.004;
+    const blendStart = E.zTop - 1.6;
+    const bottom = (z) => {
+      if (z >= E.zTop) return SLAB_UNDER;
+      const under = Math.max(0.002, G.rampHeight(z) - 1.05);
+      if (z <= blendStart) return under;
+      // mjuk övergång upp till bjälklaget
+      const t = (z - blendStart) / (E.zTop - blendStart);
+      const b0 = Math.max(0.002, G.rampHeight(blendStart) - 1.05);
+      return b0 + (SLAB_UNDER - b0) * (t * t * (3 - 2 * t));
+    };
+    const zs = [];
+    for (let z = z0; z < z1; z += 0.1) zs.push(z);
+    zs.push(z1, E.zBottom, E.zTop);
+    zs.sort((a, b) => a - b);
+    const s = new THREE.Shape();
+    zs.forEach((z, i) => (i ? s.lineTo(z, top(z)) : s.moveTo(z, top(z))));
+    [...zs].reverse().forEach((z) => s.lineTo(z, Math.min(top(z) - 0.01, bottom(z))));
+    s.closePath();
+    const width = E.maxX - E.minX + 0.08;
+    const g = new THREE.ExtrudeGeometry(s, { depth: width, bevelEnabled: false, curveSegments: 1 });
+    g.rotateY(-Math.PI / 2); // shape-x -> världens z, extrudering -> världens −x
+    g.translate(E.maxX + 0.04, 0, 0);
+    g.computeVertexNormals();
     return g;
   }, [E, G]);
-  const [zc, yc] = [(E.zBottom + E.zTop) / 2, E.rise / 2 - 1.05];
-  return <mesh geometry={geom} material={matCladding} position={[(E.minX + E.maxX) / 2, yc + 0.0, zc + 0.0]} side={THREE.DoubleSide} />;
+  return <mesh geometry={geom} material={matCladding} />;
 }
 
 function Landings({ E, G }) {
@@ -196,7 +224,7 @@ function EscalatorPair({ E }) {
       <Balustrade E={E} G={G} x={E.minX} outer={-1} />
       <Balustrade E={E} G={G} x={E.divider} />
       <Balustrade E={E} G={G} x={E.maxX} outer={1} />
-      <Underside E={E} G={G} />
+      <Truss E={E} G={G} />
       <Landings E={E} G={G} />
       <VoidRail E={E} />
     </group>

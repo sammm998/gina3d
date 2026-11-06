@@ -5,7 +5,6 @@ import { MAT } from '../materials.js';
 import { fabricMaterial, productSwatch } from '../textures.js';
 import { useStore } from '../../state/useStore.js';
 import { useLazyTexture } from '../useLazyTexture.js';
-import { inflatedGeometry, inflatedMaterials } from '../products/inflate.js';
 import { DEFAULT_ANCHORS } from '../../tryon/overlay.js';
 import { tryOnType } from '../../data/productMeta.js';
 
@@ -61,29 +60,82 @@ const BODY = {
   full: { top: 1.44, half: 0.19, bottom: 0.5, depth: 0.165 },
 };
 
-/** Det riktiga plagget (frilagd bild → 3D) på dockan. */
-function InflatedGarment({ piece, product, ev }) {
+/**
+ * Det riktiga plagget på dockan: produktfotot projiceras framifrån på ett
+ * tygskal som följer dockans kropp. Färg, mönster och detaljer kommer från
+ * fotot, formen från kroppen – inga utstickande platta bilder.
+ */
+function projectedGeometry(base, offset, scale, A, B) {
+  const g = base.clone();
+  const p = g.attributes.position;
+  const uv = new Float32Array(p.count * 2);
+  const ay = (A.left[1] + A.right[1]) / 2;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i) * scale[0] + offset[0];
+    const y = p.getY(i) * scale[1] + offset[1];
+    const u = A.left[0] + ((x + B.half) / (2 * B.half)) * (A.right[0] - A.left[0]);
+    const v = ay + ((B.top - y) / (B.top - B.bottom)) * (A.bottomY - ay);
+    uv[i * 2] = u;
+    uv[i * 2 + 1] = 1 - v;
+  }
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  return g;
+}
+
+function ProjectedGarment({ piece, product, ev, sleeveMat }) {
   const tex = useLazyTexture(product.tryOnImage, [0, 1, 0], 1e6);
   const hl = useIsHighlighted(product.id);
-  const geom = useMemo(() => (tex?.image ? inflatedGeometry(tex.image) : null), [tex]);
-  const mats = useMemo(() => (tex ? inflatedMaterials(tex) : null), [tex]);
-  useEffect(() => {
-    if (!mats) return;
-    mats[0].emissive.set(hl ? '#ffffff' : '#000000');
-    mats[0].emissiveIntensity = hl ? 0.12 : 0;
-  }, [hl, mats]);
-  if (!geom) return null;
   const B = BODY[piece.type] ?? BODY.upper;
   const t = tryOnType(product) || 'upper';
   const A = product.tryOnAnchors || DEFAULT_ANCHORS[t];
-  const aspect = geom.userData.aspect;
-  const ay = (A.left[1] + A.right[1]) / 2;
-  const sx = (B.half * 2) / Math.max(0.05, (A.right[0] - A.left[0]) * aspect);
-  const sy = (B.top - B.bottom) / Math.max(0.05, A.bottomY - ay);
-  const px = -(((A.left[0] + A.right[0]) / 2) - 0.5) * aspect * sx;
-  const py = B.top - (0.5 - ay) * sy;
+  const mat = useMemo(() => {
+    if (!tex) return null;
+    const tx = tex.clone();
+    tx.needsUpdate = true;
+    tx.wrapS = tx.wrapT = THREE.ClampToEdgeWrapping;
+    return new THREE.MeshStandardMaterial({ map: tx, alphaTest: 0.35, side: THREE.DoubleSide, roughness: 0.85 });
+  }, [tex]);
+  useEffect(() => {
+    if (!mat) return;
+    mat.emissive.set(hl ? '#ffffff' : '#000000');
+    mat.emissiveIntensity = hl ? 0.12 : 0;
+  }, [hl, mat]);
+  const parts = useMemo(() => {
+    const z = (sx) => [1, 1, sx];
+    switch (piece.type) {
+      case 'upper': return [{ g: geo.top, o: [0, 0, 0], s: z(0.76) }];
+      case 'outer': return [{ g: geo.coat, o: [0, 0, 0], s: z(0.76) }];
+      case 'skirt': return [{ g: geo.skirt, o: [0, 0, 0], s: z(0.8) }];
+      case 'full': return [{ g: geo.dress, o: [0, 0, 0], s: z(0.78) }];
+      case 'lower':
+        return [
+          { g: geo.hips, o: [0, 0, 0], s: z(0.74) },
+          { g: piece.wide ? geo.pantLegWide : geo.pantLeg, o: [-0.088, 0.5, 0], s: [1, 1, 1] },
+          { g: piece.wide ? geo.pantLegWide : geo.pantLeg, o: [0.088, 0.5, 0], s: [1, 1, 1] },
+        ];
+      default: return [];
+    }
+  }, [piece.type, piece.wide]);
+  const geoms = useMemo(() => parts.map((pt) => projectedGeometry(pt.g, pt.o, pt.s, A, B)), [parts, A, B]);
+  if (!mat) return null;
+  const sleeves = piece.type === 'upper' || piece.type === 'outer';
+  const long = piece.type === 'outer' || piece.longSleeve;
   return (
-    <mesh geometry={geom} material={mats} position={[px, py, 0.01]} scale={[sx, sy, B.depth]} {...ev} userData={{ productId: product.id }} />
+    <group {...ev} userData={{ productId: product.id }}>
+      {parts.map((pt, i) => (
+        <mesh key={i} geometry={geoms[i]} material={mat} position={pt.o} scale={pt.s} userData={{ productId: product.id }} />
+      ))}
+      {sleeves && [-1, 1].map((s) => (
+        <mesh
+          key={s}
+          geometry={long ? geo.sleeveLong : geo.sleeveShort}
+          material={sleeveMat}
+          position={[s * (ARM_X + 0.02 + (long ? 0.004 : 0.008)), long ? 1.13 : 1.34, 0]}
+          rotation-z={s * ARM_TILT}
+          userData={{ productId: product.id }}
+        />
+      ))}
+    </group>
   );
 }
 
@@ -132,7 +184,7 @@ function Garment({ piece, eventsFor }) {
   }, [hl, m]);
   const ev = eventsFor ? eventsFor(piece.productId) : {};
   const ud = { productId: piece.productId };
-  if (product?.tryOnImage) return <InflatedGarment piece={piece} product={product} ev={ev} />;
+  if (product?.tryOnImage) return <ProjectedGarment piece={piece} product={product} ev={ev} sleeveMat={m} />;
   switch (piece.type) {
     case 'upper':
     case 'outer': {
@@ -180,7 +232,7 @@ export default function Mannequin({ f, outfit = [], eventsFor }) {
   }, [outfit]);
   return (
     <group position={[f.x, f.y || 0, f.z]} rotation-y={f.rot}>
-      <Body hideArms={order.some((p) => ['upper', 'outer', 'full'].includes(p.type))} />
+      <Body />
       {order.map((p, i) => (
         <Garment key={`${p.productId}-${i}`} piece={p} eventsFor={eventsFor} />
       ))}
