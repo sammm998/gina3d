@@ -17,7 +17,7 @@ const views = [[3, 1.1, 0], [2.2, 1.2, 2.2], [0, 1.1, 3]];
 r.setScissorTest(true);
 views.forEach(([x, y, z], i) => {
   const c = g.scene.clone(true);
-  const cam = new THREE.PerspectiveCamera(30, 400 / 600, 0.1, 50); cam.position.set(x, y, z); cam.lookAt(0, 0.9, 0);
+  const cam = new THREE.PerspectiveCamera(Number(q.get("fov") || 30), 400 / 600, 0.1, 50); cam.position.set(x, y, z); cam.lookAt(0, Number(q.get("ly") || 0.9), 0);
   r.setViewport(i * 400, 0, 400, 600); r.setScissor(i * 400, 0, 400, 600);
   scene.add(g.scene); r.render(scene, cam);
 });

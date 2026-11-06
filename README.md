@@ -302,15 +302,15 @@ sidohängda plagg får tyg och färg utsnittade ur fotot.
 
 - I produktpanelen: **Lägg i kundkorgen** (med vald storlek och färg). Korgen sparas lokalt i
   webbläsaren (`gt3d.cart.v1`).
-- I kundkorgen: **Gå till provrummet och prova**. Du går till provspegeln vid kassan och
-  provningen öppnas med korgens plagg. Där kombinerar du en överdel och en underdel, eller en
+- Provhytterna vid kassan går att gå in i (öppet draperi, spegel, pall). Kliver du in öppnas
+  provningen med korgens plagg. I kundkorgen leder **Gå till provrummet och prova** dig in i en hytt. Där kombinerar du en överdel och en underdel, eller en
   klänning, och justerar varje plagg för sig. **Prova direkt här** öppnar provningen på plats.
 - Köpet görs på ginatricot.com: korgen länkar till varje produktsida.
 
 ## Personal och chatt
 
-Fyra medarbetare går runt i butiken: Emma och Ali på plan 1, Sara på plan 2 och Linnéa på
-plan 3 (`src/config/staff.js`). De går mellan sina zoner, stannar och vänder sig mot dig när du
+Sju medarbetare finns i butiken (`src/config/staff.js`): Emma och Ali går runt på plan 1 och
+Maja står alltid i kassan; Sara och Noah finns på plan 2, Linnéa och Ella på plan 3. De går mellan sina zoner, stannar och vänder sig mot dig när du
 kommer nära, och gestikulerar när ni chattar. Klicka på en medarbetare eller på
 **Fråga personalen** för att chatta.
 

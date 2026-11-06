@@ -24,6 +24,14 @@ export const STAFF = [
     greeting: 'Hej, jag är Sara! Ska du på fest eller söker du en vardagsklänning? Jag hjälper gärna till.',
   },
   {
+    id: 'noah', name: 'Noah', model: '/assets/models/staff-noah.glb', level: 1, zones: ['party', 'dresses'],
+    greeting: 'Hej, jag heter Noah! Letar du efter något till festen eller säsongens nyheter? Säg till så visar jag.',
+  },
+  {
+    id: 'ella', name: 'Ella', model: '/assets/models/staff-ella.glb', level: 2, zones: ['trousers', 'knit'],
+    greeting: 'Hej, Ella här! Jag kan hjälpa dig att hitta rätt passform på byxor eller en mysig stickad tröja.',
+  },
+  {
     id: 'linnea', name: 'Linnéa', model: '/assets/models/staff-linnea.glb', level: 2, zones: ['knit', 'trousers'],
     greeting: 'Hej, Linnéa här! Fråga mig gärna om stickat, byxor och passformer.',
   },

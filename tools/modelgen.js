@@ -75,23 +75,23 @@ function skin(geom, boneFn) {
 }
 
 /** Lem: avsmalnande, rundad cylinder mellan två punkter. */
-function limb(a, b, r0, r1, seg = 14) {
+function limb(a, b, r0, r1, seg = 22) {
   const dir = new THREE.Vector3().subVectors(b, a);
   const len = dir.length();
-  const g = new THREE.CylinderGeometry(r1, r0, len, seg, 6, false);
+  const g = new THREE.CylinderGeometry(r1, r0, len, seg, 4, false);
   g.translate(0, len / 2, 0);
   const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
   g.applyQuaternion(q);
   g.translate(a.x, a.y, a.z);
   return g;
 }
-const sphere = (r, x, y, z, sx = 1, sy = 1, sz = 1, seg = 20) => {
+const sphere = (r, x, y, z, sx = 1, sy = 1, sz = 1, seg = 16) => {
   const g = new THREE.SphereGeometry(r, seg, Math.round(seg * 0.75));
   g.scale(sx, sy, sz);
   g.translate(x, y, z);
   return g;
 };
-const lathe = (pts, sz = 1, seg = 32) => {
+const lathe = (pts, sz = 1, seg = 44) => {
   const g = new THREE.LatheGeometry(V2(pts), seg);
   g.scale(1, 1, sz);
   return g;
@@ -110,8 +110,12 @@ function buildPerson(cfg) {
   const { bones, skeleton } = buildSkeleton(S);
   const parts = []; // { geom, mat }
   const mats = {
-    skin: new THREE.MeshStandardMaterial({ name: 'Skin', color: cfg.skin, roughness: 0.55 }),
-    hair: new THREE.MeshStandardMaterial({ name: 'Hair', color: cfg.hair, roughness: 0.45, metalness: 0.05 }),
+    skin: new THREE.MeshPhysicalMaterial({ name: 'Skin', color: cfg.skin, roughness: 0.58, sheen: 0.45, sheenColor: new THREE.Color('#ffb59c'), sheenRoughness: 0.55 }),
+    sole: new THREE.MeshStandardMaterial({ name: 'Sole', color: cfg.sole ?? '#d8d4cc', roughness: 0.7 }),
+    belt: new THREE.MeshStandardMaterial({ name: 'Belt', color: cfg.belt ?? '#2a1c14', roughness: 0.45 }),
+    metal: new THREE.MeshStandardMaterial({ name: 'Buckle', color: '#c9b58a', metalness: 0.9, roughness: 0.3 }),
+    lash: new THREE.MeshStandardMaterial({ name: 'Lashes', color: '#120c0a', roughness: 0.7 }),
+    hair: new THREE.MeshStandardMaterial({ name: 'Hair', color: cfg.hair, roughness: 0.45, metalness: 0.05, side: THREE.DoubleSide }),
     top: new THREE.MeshStandardMaterial({ name: 'Top', color: cfg.top, roughness: 0.85 }),
     bottom: new THREE.MeshStandardMaterial({ name: 'Bottom', color: cfg.bottom, roughness: 0.8 }),
     shoe: new THREE.MeshStandardMaterial({ name: 'Shoes', color: cfg.shoes, roughness: 0.4 }),
@@ -144,8 +148,18 @@ function buildPerson(cfg) {
     const shoe = new THREE.CapsuleGeometry(0.045, 0.16, 6, 14);
     shoe.rotateX(Math.PI / 2);
     shoe.scale(fem ? 0.95 : 1.1, 0.8, 1);
-    shoe.translate(ankle.x, 0.045, 0.045);
+    shoe.translate(ankle.x, 0.05, 0.045);
     add(shoe, mats.shoe, `Foot.${L}`);
+    const sole = new THREE.CapsuleGeometry(0.046, 0.165, 4, 14);
+    sole.rotateX(Math.PI / 2);
+    sole.scale(fem ? 1.0 : 1.14, 0.22, 1.02);
+    sole.translate(ankle.x, 0.012, 0.045);
+    add(sole, mats.sole, `Foot.${L}`);
+    // byxans fåll
+    const hem = new THREE.TorusGeometry(fem ? 0.043 : 0.048, 0.006, 6, 20);
+    hem.rotateX(Math.PI / 2);
+    hem.translate(ankle.x, ankle.y + 0.02, ankle.z);
+    add(hem, mats.bottom, `Shin.${L}`);
   }
   // --- bäcken/byxlinning
   add(lathe([[0.001, 0.86 * S], [0.13, 0.86 * S], [fem ? 0.165 : 0.155, 0.92 * S], [fem ? 0.165 : 0.157, 0.99 * S], [fem ? 0.148 : 0.152, 1.05 * S], [0.001, 1.06 * S]], 0.74), mats.bottom, (x, y) => {
@@ -153,11 +167,25 @@ function buildPerson(cfg) {
     if (y < 0.95 * S) return ['Hips', `Thigh.${side(x)}`, THREE.MathUtils.clamp((0.95 * S - y) / (0.09 * S), 0, 1) * 0.65];
     return blendY('Hips', 'Spine', 1.04 * S, 0.03)(x, y);
   });
+  // skärp med spänne
+  const belt = new THREE.TorusGeometry(1, 0.012, 6, 48);
+  belt.rotateX(Math.PI / 2);
+  belt.scale(fem ? 0.152 : 0.156, 1, (fem ? 0.152 : 0.156) * 0.74);
+  belt.translate(0, 1.005 * S, 0);
+  add(belt, mats.belt, blendY('Hips', 'Spine', 1.04 * S, 0.03));
+  const buckle = new THREE.BoxGeometry(0.035, 0.025, 0.006);
+  buckle.translate(0, 1.005 * S, (fem ? 0.152 : 0.156) * 0.74 + 0.006);
+  add(buckle, mats.metal, 'Hips');
   // --- överkropp (topp/tröja)
   const torso = fem
     ? [[0.001, 1.0], [0.15, 1.0], [0.142, 1.08], [0.128, 1.16], [0.127, 1.22], [0.148, 1.3], [0.152, 1.35], [0.15, 1.4], [0.14, 1.45], [0.1, 1.49], [0.055, 1.5], [0.001, 1.5]]
     : [[0.001, 1.0], [0.152, 1.0], [0.15, 1.08], [0.148, 1.16], [0.155, 1.25], [0.168, 1.33], [0.172, 1.39], [0.165, 1.45], [0.12, 1.49], [0.06, 1.51], [0.001, 1.51]];
   add(lathe(torso.map(([r, y]) => [r, y * S]), fem ? 0.68 : 0.7), mats.top, blendY('Spine', 'Chest', 1.24 * S, 0.06));
+  // rund halsringning/krage
+  const collar = new THREE.TorusGeometry(fem ? 0.052 : 0.06, 0.011, 8, 28);
+  collar.rotateX(Math.PI / 2 - 0.15);
+  collar.translate(0, 1.49 * S, 0.006);
+  add(collar, mats.top, () => ['Chest', 'Neck', 0.3]);
   // axlar
   for (const s of [1, -1]) add(sphere(fem ? 0.058 : 0.068, 0.16 * s, 1.425 * S, 0, 1.1, 0.95, 0.9), mats.top, () => ['Chest', `UpperArm.${side(s)}`, 0.55]);
   // --- armar (långärmat), händer
@@ -170,52 +198,119 @@ function buildPerson(cfg) {
     });
     add(sphere(fem ? 0.038 : 0.044, el.x, el.y, el.z), mats.top, `ForeArm.${L}`);
     add(limb(el, wr, fem ? 0.036 : 0.042, fem ? 0.03 : 0.034), mats.top, `ForeArm.${L}`);
-    const hand = new THREE.CapsuleGeometry(fem ? 0.026 : 0.03, 0.06, 4, 10);
-    hand.scale(1, 1, 0.55);
-    hand.translate(wr.x * 1.01, wr.y - 0.06, wr.z + 0.005);
-    add(hand, mats.skin, `Hand.${L}`);
+    const cuff = new THREE.TorusGeometry(fem ? 0.031 : 0.035, 0.006, 6, 18);
+    cuff.rotateX(Math.PI / 2);
+    cuff.translate(wr.x, wr.y + 0.012, wr.z);
+    add(cuff, mats.top, `ForeArm.${L}`);
+    // handflata + fyra fingrar + tumme (handflatan mot kroppen)
+    const k = fem ? 1 : 1.12;
+    const palm = new THREE.CapsuleGeometry(0.022 * k, 0.045 * k, 4, 12);
+    palm.scale(0.55, 1, 1.2);
+    palm.translate(wr.x * 1.01, wr.y - 0.045 * k, wr.z + 0.004);
+    add(palm, mats.skin, `Hand.${L}`);
+    [-0.016, -0.005, 0.006, 0.016].forEach((dz, fi) => {
+      const len = (fi === 0 || fi === 3 ? 0.04 : 0.05) * k;
+      const finger = new THREE.CapsuleGeometry(0.0062 * k, len, 3, 8);
+      finger.rotateZ(-s * 0.06);
+      finger.translate(wr.x * 1.012 - s * 0.003, wr.y - 0.085 * k - len / 2, wr.z + dz * k + 0.004);
+      add(finger, mats.skin, `Hand.${L}`);
+    });
+    const thumb = new THREE.CapsuleGeometry(0.0075 * k, 0.035 * k, 3, 8);
+    thumb.rotateX(0.5);
+    thumb.translate(wr.x * 1.0 + s * 0.006, wr.y - 0.05 * k, wr.z + 0.026 * k);
+    add(thumb, mats.skin, `Hand.${L}`);
   }
   // --- hals och huvud
   add(limb(P(0, 1.47, 0), P(0, 1.58, 0.005), fem ? 0.046 : 0.055, fem ? 0.042 : 0.05), mats.skin, blendY('Neck', 'Head', 1.56 * S, 0.02));
   const hy = 1.665 * S;
-  const head = new THREE.LatheGeometry(V2([[0.001, -0.115], [0.045, -0.11], [0.07, -0.085], [0.083, -0.04], [0.09, 0.01], [0.092, 0.05], [0.083, 0.09], [0.06, 0.115], [0.03, 0.127], [0.001, 0.13]]), 28);
+  // Huvudet: jämn profil som sedan "skulpteras" – näsa, ögonhålor, kindben,
+  // käke och haka formas direkt i ytan (inga påklistrade delar).
+  const prof = new THREE.SplineCurve(V2([[0.001, -0.118], [0.04, -0.112], [0.066, -0.088], [0.081, -0.045], [0.089, 0.005], [0.092, 0.05], [0.085, 0.088], [0.064, 0.114], [0.032, 0.128], [0.001, 0.132]]));
+  const head = new THREE.LatheGeometry(prof.getPoints(40), 48);
+  head.rotateY(Math.PI); // lathe-sömmen hamnar i nacken, inte mitt i ansiktet
   head.scale(fem ? 0.93 : 1, 1, 1.08);
+  {
+    const p = head.attributes.position;
+    const gauss = (x, y, cx, cy, sx, sy) => Math.exp(-((x - cx) ** 2) / (2 * sx * sx) - ((y - cy) ** 2) / (2 * sy * sy));
+    for (let i = 0; i < p.count; i++) {
+      let x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+      const front = THREE.MathUtils.clamp(z / 0.09, 0, 1); // 1 rakt fram
+      // käke och haka: smalare nertill, hakan något framåt
+      const jaw = THREE.MathUtils.clamp((-0.035 - y) / 0.075, 0, 1);
+      x *= 1 - 0.22 * jaw;
+      z += 0.01 * gauss(x, y, 0, -0.088, 0.03, 0.02) * front;
+      // näsa
+      z += (0.021 * gauss(x, y, 0, -0.01, 0.0105, 0.022) + 0.007 * gauss(x, y, 0, 0.018, 0.007, 0.02)) * front;
+      // ögonhålor och kindben
+      for (const s of [1, -1]) {
+        z -= 0.0045 * gauss(x, y, 0.033 * s, 0.02, 0.015, 0.011) * front;
+        const cheek = 0.005 * gauss(x, y, 0.05 * s, -0.012, 0.022, 0.02) * front;
+        x += cheek * s;
+        z += cheek * 0.6;
+      }
+      // munområdet lite framåt, panna något platt
+      z += 0.004 * gauss(x, y, 0, -0.045, 0.025, 0.015) * front;
+      p.setXYZ(i, x, y, z);
+    }
+    head.computeVertexNormals();
+  }
   head.translate(0, hy, 0.005);
   add(head, mats.skin, 'Head');
   // ansikte
-  add(sphere(0.012, 0, hy - 0.005, 0.103, 0.9, 1.6, 1.1, 10), mats.skin, 'Head'); // näsa
+
   for (const s of [1, -1]) {
-    add(sphere(0.0115, 0.033 * s, hy + 0.02, 0.086, 1.2, 0.85, 0.6, 12), mats.eye, 'Head');
-    add(sphere(0.0065, 0.033 * s, hy + 0.02, 0.092, 1, 1, 0.5, 10), mats.iris, 'Head');
+    add(sphere(0.0118, 0.033 * s, hy + 0.02, 0.0885, 1.25, 0.85, 0.6, 14), mats.eye, 'Head');
+    add(sphere(0.0064, 0.033 * s, hy + 0.019, 0.0945, 1, 1, 0.45, 12), mats.iris, 'Head');
+    // övre ögonlock och fransar
+    const lid = new THREE.SphereGeometry(0.0125, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2.3);
+    lid.scale(1.3, 0.45, 0.7);
+    lid.translate(0.033 * s, hy + 0.027, 0.088);
+    add(lid, mats.skin, 'Head');
+    const lash = new THREE.CapsuleGeometry(0.0016, 0.022, 2, 6);
+    lash.rotateZ(Math.PI / 2 + 0.08 * s);
+    lash.translate(0.033 * s, hy + 0.03, 0.096);
+    add(lash, mats.lash, 'Head');
     const brow = new THREE.CapsuleGeometry(0.004, 0.026, 3, 6);
     brow.rotateZ(Math.PI / 2 + 0.12 * s);
     brow.translate(0.034 * s, hy + 0.043, 0.09);
     add(brow, mats.brow, 'Head');
     add(sphere(0.017, 0.088 * s, hy + 0.0, 0.005, 0.5, 1.2, 0.8, 10), mats.skin, 'Head'); // öron
   }
-  add(sphere(0.019, 0, hy - 0.045, 0.088, 1.1, 0.42, 0.5, 12), mats.lips, 'Head');
+  add(sphere(0.018, 0, hy - 0.04, 0.0985, 1.15, 0.32, 0.42, 14), mats.lips, 'Head'); // överläpp
+  add(sphere(0.017, 0, hy - 0.05, 0.097, 1.05, 0.36, 0.45, 14), mats.lips, 'Head'); // underläpp
   // hår
   if (cfg.hairStyle === 'long' || cfg.hairStyle === 'ponytail' || cfg.hairStyle === 'bun') {
     // hårfäste över hela hjässan, lite bakåt så att pannan syns
-    add(sphere(0.1, 0, hy + 0.045, -0.008, 1.02, 0.98, 1.1, 26), mats.hair, 'Head');
+    add(sphere(0.102, 0, hy + 0.05, -0.028, 1.02, 0.98, 1.04, 26), mats.hair, 'Head');
     // sidbena/lugg som ramar in ansiktet
     add(sphere(0.075, 0.02, hy + 0.088, 0.04, 1.25, 0.42, 0.95, 18), mats.hair, 'Head');
-    for (const s of [1, -1]) add(sphere(0.03, 0.078 * s, hy + 0.0, 0.03, 0.55, 1.9, 0.9, 12), mats.hair, 'Head');
   } else {
-    add(sphere(0.097, 0, hy + 0.05, -0.006, 1.02, 0.82, 1.1, 24), mats.hair, 'Head');
+    add(sphere(0.099, 0, hy + 0.052, -0.026, 1.02, 0.84, 1.05, 24), mats.hair, 'Head');
+    // kort frisyr: lite volym upptill och kortare sidor
+    add(sphere(0.06, 0.012, hy + 0.105, 0.035, 1.35, 0.5, 1.0, 16), mats.hair, 'Head');
+    for (const s of [1, -1]) add(sphere(0.04, 0.083 * s, hy + 0.035, -0.012, 0.45, 1.0, 1.4, 12), mats.hair, 'Head');
   }
   if (cfg.hairStyle === 'long') {
-    const back = new THREE.CapsuleGeometry(0.075, 0.2, 6, 16);
-    back.scale(1.25, 1, 0.55);
-    back.translate(0, hy - 0.11, -0.065);
-    add(back, mats.hair, blendY('Neck', 'Head', hy - 0.06, 0.06));
+    // ett sammanhängande hårfall bakom och vid sidorna, ner över axlarna
+    const hp = new THREE.SplineCurve(V2([[0.035, 0.13], [0.085, 0.105], [0.104, 0.06], [0.108, 0.0], [0.102, -0.06], [0.1, -0.12], [0.11, -0.18], [0.118, -0.24], [0.112, -0.26]]));
+    const fall = new THREE.LatheGeometry(hp.getPoints(30), 40, Math.PI * 0.3, Math.PI * 1.4);
+    fall.scale(fem ? 0.98 : 1, 1, 1.12);
+    fall.translate(0, hy, -0.004);
+    add(fall, mats.hair, (x, y) => (y < hy - 0.1 ? ['Head', 'Chest', THREE.MathUtils.clamp((hy - 0.1 - y) / 0.15, 0, 0.7)] : 'Head'));
   } else if (cfg.hairStyle === 'ponytail') {
     const tail = new THREE.CapsuleGeometry(0.028, 0.17, 4, 10);
     tail.rotateX(0.35);
     tail.translate(0, hy - 0.05, -0.115);
     add(tail, mats.hair, 'Head');
+    const band = new THREE.TorusGeometry(0.02, 0.006, 6, 14);
+    band.translate(0, hy + 0.04, -0.105);
+    add(band, mats.lash, 'Head');
   } else if (cfg.hairStyle === 'bun') {
     add(sphere(0.045, 0, hy + 0.11, -0.075, 1, 0.9, 1, 14), mats.hair, 'Head');
+    const band = new THREE.TorusGeometry(0.03, 0.006, 6, 16);
+    band.rotateX(0.9);
+    band.translate(0, hy + 0.085, -0.07);
+    add(band, mats.lash, 'Head');
   }
   // namnskylt
   const tag = new THREE.BoxGeometry(0.075, 0.025, 0.006);
@@ -309,6 +404,8 @@ export const STAFF = [
   { name: 'staff-sara', displayName: 'Sara', body: 'f', height: 1.65, skin: '#8d5a3b', hair: '#1b1411', hairStyle: 'bun', eyes: '#2b1d14', lips: '#7a4038', top: '#efe8dc', bottom: '#151515', shoes: '#efe8dc' },
   { name: 'staff-ali', displayName: 'Ali', body: 'm', height: 1.8, skin: '#c99a76', hair: '#1c1612', hairStyle: 'short', eyes: '#2e2218', lips: '#a0675c', top: '#151515', bottom: '#2b2b2b', shoes: '#111111' },
   { name: 'staff-maja', displayName: 'Maja', body: 'f', height: 1.67, skin: '#d9a985', hair: '#5a3524', hairStyle: 'ponytail', eyes: '#3b2a1e', lips: '#a8645c', top: '#efe8dc', bottom: '#151515', shoes: '#151515' },
+  { name: 'staff-noah', displayName: 'Noah', body: 'm', height: 1.83, skin: '#efc8ad', hair: '#6b4a2f', hairStyle: 'short', eyes: '#4f6b45', lips: '#b97468', top: '#efe8dc', bottom: '#151515', shoes: '#151515', sole: '#151515' },
+  { name: 'staff-ella', displayName: 'Ella', body: 'f', height: 1.66, skin: '#6e432c', hair: '#140e0b', hairStyle: 'long', eyes: '#24170f', lips: '#6a3832', top: '#151515', bottom: '#151515', shoes: '#efe8dc' },
   { name: 'staff-linnea', displayName: 'Linnéa', body: 'f', height: 1.72, skin: '#f0d2bd', hair: '#c9a46a', hairStyle: 'ponytail', eyes: '#3d5a73', lips: '#c27d78', top: '#151515', bottom: '#efe8dc', shoes: '#151515' },
 ];
 
