@@ -5,6 +5,9 @@ import Logo from './Logo.jsx';
 import Minimap from './Minimap.jsx';
 import Joystick from './Joystick.jsx';
 import Tooltip from './Tooltip.jsx';
+import { STAFF } from '../config/staff.js';
+import { staffState } from '../scene/staff/Staff.jsx';
+import { player } from '../nav/playerState.js';
 import { startTour, stopTour, useTourController } from './Tour.js';
 
 function Icon({ name }) {
@@ -44,6 +47,17 @@ export default function Hud() {
   const wishCount = useStore((s) => s.wishlist.length);
   const setWishlistOpen = useStore((s) => s.setWishlistOpen);
   const cartCount = useStore((s) => s.cart.length);
+  // närmaste medarbetare på samma våning (annars den första)
+  const openNearestStaff = () => {
+    let best = STAFF[0], bestD = Infinity;
+    for (const s of STAFF) {
+      const p = staffState[s.id];
+      if (!p) continue;
+      const d = Math.hypot(p.x - player.x, p.z - player.z) + (p.level === player.level ? 0 : 100);
+      if (d < bestD) { bestD = d; best = s; }
+    }
+    useStore.getState().openChat(best.id);
+  };
   const setCartOpen = useStore((s) => s.setCartOpen);
   const arrived = useStore((s) => s.arrivedNavId);
   const fittingNavId = useStore((s) => s.fittingNavId);
@@ -74,6 +88,10 @@ export default function Hud() {
           <button className={`btn btn--ghost ${mapOpen ? 'is-on' : ''}`} onClick={() => setMapOpen((v) => !v)} aria-pressed={mapOpen}>
             <Icon name="map" />
             <span className="hide-sm">{t('hud.map')}</span>
+          </button>
+          <button className="btn btn--ghost" onClick={openNearestStaff} aria-label="Fråga personalen">
+            <Icon name="chat" />
+            <span className="hide-sm">Fråga personalen</span>
           </button>
           <button className="btn btn--ghost" onClick={() => setCartOpen(true)} aria-label="Kundkorg">
             <Icon name="bag" />

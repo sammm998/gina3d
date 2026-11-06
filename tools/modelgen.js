@@ -180,11 +180,13 @@ function buildPerson(cfg) {
   add(sphere(0.019, 0, hy - 0.045, 0.088, 1.1, 0.42, 0.5, 12), mats.lips, 'Head');
   // hår
   if (cfg.hairStyle === 'long' || cfg.hairStyle === 'ponytail' || cfg.hairStyle === 'bun') {
-    add(sphere(0.1, 0, hy + 0.03, -0.012, 1.0, 1.02, 1.12, 24), mats.hair, 'Head');
-    // pannlugg/sidbena
-    add(sphere(0.07, 0.025, hy + 0.085, 0.045, 1.2, 0.45, 0.8, 16), mats.hair, 'Head');
+    // hårfäste över hela hjässan, lite bakåt så att pannan syns
+    add(sphere(0.1, 0, hy + 0.045, -0.008, 1.02, 0.98, 1.1, 26), mats.hair, 'Head');
+    // sidbena/lugg som ramar in ansiktet
+    add(sphere(0.075, 0.02, hy + 0.088, 0.04, 1.25, 0.42, 0.95, 18), mats.hair, 'Head');
+    for (const s of [1, -1]) add(sphere(0.03, 0.078 * s, hy + 0.0, 0.03, 0.55, 1.9, 0.9, 12), mats.hair, 'Head');
   } else {
-    add(sphere(0.096, 0, hy + 0.04, -0.01, 1.0, 0.85, 1.1, 22), mats.hair, 'Head');
+    add(sphere(0.097, 0, hy + 0.05, -0.006, 1.02, 0.82, 1.1, 24), mats.hair, 'Head');
   }
   if (cfg.hairStyle === 'long') {
     const back = new THREE.CapsuleGeometry(0.075, 0.2, 6, 16);
@@ -215,6 +217,8 @@ function buildPerson(cfg) {
   root.name = cfg.name;
   root.add(bones[0]);
   root.add(mesh);
+  // benens världsmatriser måste vara uträknade innan bind-posen sparas
+  root.updateMatrixWorld(true);
   mesh.bind(skeleton);
   root.userData = { staffName: cfg.displayName, role: 'Butikspersonal' };
   return { root, bones, S };

@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 /**
  * Serverar projektets rotmappar /assets och /data (samt MediaPipe-wasm från
@@ -28,7 +29,8 @@ function staticRootDirs() {
     configureServer(server) {
       // personalchatten i dev-läge (samma hanterare som i produktion)
       server.middlewares.use('/api/chat', async (req, res) => {
-        const { handleChat } = await import('./server/chat.mjs');
+        // laddas vid körning (inte buntad i konfigurationen)
+        const { handleChat } = await import(/* @vite-ignore */ pathToFileURL(path.resolve('server/chat.mjs')).href);
         handleChat(req, res);
       });
       server.middlewares.use((req, res, next) => {

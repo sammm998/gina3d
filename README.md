@@ -116,6 +116,7 @@ miljövariabler på tjänsten:
 | `GT_IMPORT_PLAN` | `tops:8,knitwear:7,trousers:7,jeans:8,dresses:8,skirts:4,outerwear:7,bags:4,shoes:4` | antal produkter per kategori (minst 50 totalt) |
 | `GT_DEBUG` | `1` | skriver ut bildanalysen i byggloggen |
 | `PORT` | `8080` | serverns port |
+| `ANTHROPIC_API_KEY` | – | aktiverar AI-personalen i chatten |
 
 Importen läser produktsidornas strukturerade data (JSON-LD: namn, pris, färg, material,
 bilder), laddar ner bilderna, hittar den bild som är en ren produktbild (ingen hud, jämn
@@ -296,6 +297,55 @@ produktbilden (`src/scene/products/inflate.js`). Siluetten ger ett avståndsfäl
 plaggets volym, och fotot ligger som textur på fram- och baksidan. Skyltdockorna får plagget
 passat efter axlar, höfter och knän med samma ankare som AR-provningen. Vikta och
 sidohängda plagg får tyg och färg utsnittade ur fotot.
+
+## Kundkorg och provrum
+
+- I produktpanelen: **Lägg i kundkorgen** (med vald storlek och färg). Korgen sparas lokalt i
+  webbläsaren (`gt3d.cart.v1`).
+- I kundkorgen: **Gå till provrummet och prova**. Du går till provspegeln vid kassan och
+  provningen öppnas med korgens plagg. Där kombinerar du en överdel och en underdel, eller en
+  klänning, och justerar varje plagg för sig. **Prova direkt här** öppnar provningen på plats.
+- Köpet görs på ginatricot.com: korgen länkar till varje produktsida.
+
+## Personal och chatt
+
+Fyra medarbetare går runt i butiken: Emma och Ali på plan 1, Sara på plan 2 och Linnéa på
+plan 3 (`src/config/staff.js`). De går mellan sina zoner, stannar och vänder sig mot dig när du
+kommer nära, och gestikulerar när ni chattar. Klicka på en medarbetare eller på
+**Fråga personalen** för att chatta.
+
+Chatten (`server/chat.mjs`, `POST /api/chat`):
+
+- **Med `ANTHROPIC_API_KEY`** satt på servern (Railway → tjänsten → Variables) svarar Claude
+  (`claude-opus-5-5`, effort `low`; reservmodell vid policyavslag via `fallbacks: "default"`) som
+  personal. Claude har verktyg för att söka i hela sortimentet, hämta aktuellt pris, färger,
+  storlekar, material och bild live från produktsidan på ginatricot.com, och visa produktkort.
+  Från ett kort kan du gå till plagget i butiken, lägga det i korgen eller öppna det på
+  ginatricot.com.
+- **Utan nyckel** svarar chatten med en enkel sökning i samma katalog, och gränssnittet säger det.
+- Sortimentet läses från sajtens sitemap vid varje bygge (`data/catalog.json`, cirka 10 000
+  produkter); detaljerna hämtas live och cachas en timme. Chatten är märkt som AI-assistent.
+
+### Egna 3D-modeller av personalen (.glb)
+
+`npm run models` bygger personalen med `tools/modelgen.js` och sparar den som
+`assets/models/staff-*.glb`. Varje modell har:
+
+- kropp, ansikte, hår, kläder, skor och namnskylt
+- ett skelett med 17 ben
+- animationerna `Walk`, `Idle` och `Talk`
+
+Ändra utseenden (hudton, hår, kläder, längd) i `STAFF` i generatorn och kör skriptet igen. Vill
+du ha fotorealistiska människor kan `model` i `src/config/staff.js` peka på valfri riggad `.glb`
+med samma animationsnamn (till exempel från Mixamo eller Ready Player Me).
+
+## AR-provning – testad
+
+Provningen är testad med riktiga modellfoton från importen, både som uppladdad bild och som
+webbkamera (Chromium med fotot som fejkad videokälla). Plaggen placeras med en affin
+avbildning från tre kroppspunkter, så de följer lutning och benens riktning. Kroppsigenkänningen
+behöver se **ansiktet**: bilder där huvudet är beskuret ger "Hittade ingen person".
+`GT_TESTIMG=n` på Railway skriver ut n modellfoton i byggloggen för sådana tester.
 
 ## Navigering
 

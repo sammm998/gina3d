@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { STAFF } from '../config/staff.js';
 
 const WISHLIST_KEY = 'gt3d.wishlist.v1';
 const CART_KEY = 'gt3d.cart.v1';
@@ -62,7 +63,7 @@ export const useStore = create((set, get) => ({
   hovered: null, // { id, x, y }
   setHovered: (hovered) => set({ hovered }),
   selectedId: null,
-  select: (selectedId) => set({ selectedId, wishlistOpen: false, cartOpen: false }),
+  select: (selectedId) => set({ selectedId, wishlistOpen: false, cartOpen: false, chat: { ...get().chat, open: false } }),
 
   // --- önskelista (sparas lokalt i webbläsaren)
   wishlist: loadWishlist(),
@@ -126,6 +127,51 @@ export const useStore = create((set, get) => ({
   // --- produktplacering (id -> världsposition där produkten visas)
   productSpots: {},
   setProductSpots: (productSpots) => set({ productSpots }),
+
+  // --- chatt med personalen
+  chat: { open: false, staffId: null, items: [], history: [], pending: false, mode: null },
+  openChat: (staffId) => {
+    const cur = get().chat;
+    if (cur.staffId === staffId && cur.items.length) {
+      set({ chat: { ...cur, open: true }, pointerLocked: false, selectedId: null, cartOpen: false, wishlistOpen: false });
+      return;
+    }
+    const staff = STAFF.find((s) => s.id === staffId) ?? STAFF[0];
+    set({
+      chat: { open: true, staffId: staff.id, items: [{ role: 'staff', text: staff.greeting, cards: [] }], history: [], pending: false, mode: null },
+      pointerLocked: false, selectedId: null, cartOpen: false, wishlistOpen: false,
+    });
+    if (document.pointerLockElement) document.exitPointerLock();
+  },
+  closeChat: () => set({ chat: { ...get().chat, open: false } }),
+  sendChat: async (text) => {
+    const c = get().chat;
+    if (c.pending || !text.trim()) return;
+    const staff = STAFF.find((s) => s.id === c.staffId) ?? STAFF[0];
+    set({ chat: { ...c, pending: true, items: [...c.items, { role: 'user', text, cards: [] }] } });
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, staff: staff.name, history: c.history }),
+      });
+      const data = await res.json().catch(() => ({}));
+      const now = get().chat;
+      const reply = res.ok ? data.reply : data.error || 'Chatten svarar inte just nu.';
+      set({
+        chat: {
+          ...now,
+          pending: false,
+          mode: data.mode ?? now.mode,
+          history: Array.isArray(data.history) ? data.history : now.history,
+          items: [...now.items, { role: 'staff', text: reply, cards: data.cards ?? [] }],
+        },
+      });
+    } catch {
+      const now = get().chat;
+      set({ chat: { ...now, pending: false, items: [...now.items, { role: 'staff', text: 'Jag når inte servern just nu – försök igen om en stund.', cards: [] }] } });
+    }
+  },
 
   toast: null,
   showToast: (text) => {

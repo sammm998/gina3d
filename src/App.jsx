@@ -5,6 +5,7 @@ import Hud from './ui/Hud.jsx';
 import ProductPanel from './ui/ProductPanel.jsx';
 import Wishlist from './ui/Wishlist.jsx';
 import Cart from './ui/Cart.jsx';
+import StaffChat from './ui/StaffChat.jsx';
 import TryOn from './ui/TryOn.jsx';
 import { useStore } from './state/useStore.js';
 import { buildWorld } from './nav/world.js';
@@ -13,7 +14,7 @@ import { loadProducts } from './data/products.js';
 
 export default function App() {
   const entered = useStore((s) => s.entered);
-  const hasPanel = useStore((s) => !!s.selectedId || s.wishlistOpen || s.cartOpen);
+  const hasPanel = useStore((s) => !!s.selectedId || s.wishlistOpen || s.cartOpen || s.chat.open);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -36,6 +37,7 @@ export default function App() {
           <ProductPanel />
           <Wishlist />
           <Cart />
+          <StaffChat />
           <TryOn />
         </>
       ) : (

@@ -5,6 +5,7 @@ import { ESCALATORS, FLOOR_H, PLAYER, inLanes, rampHeight } from '../config/stor
 import { input, player } from '../nav/playerState.js';
 import { navGrids, rampWorlds, worlds } from '../nav/world.js';
 import { useStore } from '../state/useStore.js';
+import { staffState } from './staff/Staff.jsx';
 
 const PITCH_LIMIT = 1.25;
 const laneOf = (E, dir) => E.lanes.find((l) => Math.sign(l.dir) === dir);
@@ -220,6 +221,18 @@ export default function Player() {
       pos.x += (vel.current.x * dt) / steps;
       pos.z += ((vel.current.y + belt) * dt) / steps;
       (esc ? rampWorlds[player.esc] : worlds[player.level]).resolve(pos, PLAYER.radius);
+    }
+    // gå inte igenom personalen
+    if (!esc) {
+      for (const s of Object.values(staffState)) {
+        if (s.level !== player.level) continue;
+        const ddx = pos.x - s.x, ddz = pos.z - s.z;
+        const dd = Math.hypot(ddx, ddz);
+        if (dd < 0.62 && dd > 1e-4) {
+          pos.x = s.x + (ddx / dd) * 0.62;
+          pos.z = s.z + (ddz / dd) * 0.62;
+        }
+      }
     }
     player.x = pos.x;
     player.z = pos.z;
