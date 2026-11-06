@@ -62,6 +62,10 @@ function BakedShadows() {
 
 /** Efterbehandling: ambient occlusion, mjuk bloom på lampor, kantutjämning. */
 function Effects({ quality }) {
+  // faktisk upplösning och storlek (ändras av prestandamätaren och när fönstret ändras)
+  const vdpr = useThree((st) => st.viewport.dpr);
+  const w = useThree((st) => st.size.width);
+  const h = useThree((st) => st.size.height);
   if (quality === 'low') return null;
   const high = quality === 'high';
   const effects = [
@@ -72,7 +76,9 @@ function Effects({ quality }) {
     <SMAA key="smaa" />,
   ].filter(Boolean);
   return (
-    <EffectComposer key={quality} multisampling={0} disableNormalPass>
+    // Ny effektkedja när kvalitet ELLER upplösning ändras: N8AO:s buffertar i halv upplösning
+    // följer annars inte med vid storleksbyte, och bilden blir disig med spökbilder.
+    <EffectComposer key={`${quality}-${vdpr}-${w}x${h}`} multisampling={0} disableNormalPass>
       {effects}
     </EffectComposer>
   );
@@ -124,9 +130,11 @@ export default function Experience({ children }) {
         toneMapping: post ? THREE.NoToneMapping : THREE.NeutralToneMapping,
         stencil: false,
       }}
-      onCreated={({ scene }) => {
+      onCreated={(state) => {
+        const { scene } = state;
         scene.background = new THREE.Color('#ecebe8');
         if (import.meta.env.DEV) window.__scene = scene;
+        if (import.meta.env.DEV) window.__r3f = state;
       }}
     >
       <PerformanceMonitor
