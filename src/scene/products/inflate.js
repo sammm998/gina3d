@@ -36,6 +36,26 @@ export function inflatedGeometry(image, { cols = 48, back = 0.85 } = {}) {
   const inside = new Uint8Array(C * R);
   for (let i = 0; i < C * R; i++) inside[i] = px[i * 4 + 3] > 90 ? 1 : 0;
 
+  // Underkänn bilder där bakgrunden inte är bortplockad (nästan hel rektangel
+  // eller motiv som går ut i flera kanter) – de blir annars en spöklik skiva
+  // med en mörk kontaktskugga under.
+  {
+    let n = 0, x0 = C, y0 = R, x1 = -1, y1 = -1;
+    for (let y = 0; y < R; y++) for (let x = 0; x < C; x++) if (inside[y * C + x]) {
+      n++;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+    const fill = n / Math.max(1, (x1 - x0 + 1) * (y1 - y0 + 1));
+    const edges = (x0 === 0) + (y0 === 0) + (x1 === C - 1) + (y1 === R - 1);
+    if (n < C * R * 0.04 || fill > 0.9 || edges >= 3) {
+      cache.set(key, null);
+      return null;
+    }
+  }
+
   // 2) avståndsfält (chamfer 3-4) inne i masken
   const INF = 1e9;
   const d = new Float32Array(C * R);

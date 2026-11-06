@@ -1,5 +1,6 @@
 import { detectImage } from '../poseTracker.js';
-import { anchorsFor, bodyFrame, drawGarment } from '../overlay.js';
+import { bodyFrame, drawPrepared } from '../overlay.js';
+import { prepareGarment } from '../garmentPrep.js';
 import { tryOnType } from '../../data/productMeta.js';
 
 /**
@@ -26,7 +27,9 @@ export const localOverlayProvider = {
     const type = tryOnType(product);
     const frame = bodyFrame(lms, type, W, H, false);
     if (!frame) return { image: canvas, note: 'Hittade ingen kropp i bilden. Prova en helfigursbild rakt framifrån.' };
-    drawGarment(ctx, garmentImage, frame, anchorsFor(product, type), W, adjust);
+    const prep = prepareGarment(garmentImage, type);
+    if (!prep.ok) return { image: canvas, note: prep.reason };
+    drawPrepared(ctx, prep, frame, W, adjust, 1);
     return { image: canvas };
   },
 };

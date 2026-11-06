@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/useStore.js';
 import { formatPrice } from '../i18n/index.js';
 import { canTryOn, tryOnType } from '../data/productMeta.js';
-import { detectImage, detectVideo, loadPoseLandmarker } from '../tryon/poseTracker.js';
-import { anchorsFor, bodyFrame, drawGarment } from '../tryon/overlay.js';
+import { detectImage, detectVideo, getLastMask, loadPoseLandmarker } from '../tryon/poseTracker.js';
+import { bodyFrame, drawArmsOver, drawPrepared, drawTrousers } from '../tryon/overlay.js';
+import { prepareGarment } from '../tryon/garmentPrep.js';
+import { fitFrameToBody, maskCanvas } from '../tryon/bodyMask.js';
 import { MultiFilter } from '../tryon/smoothing.js';
 import { listProviders } from '../tryon/providers/index.js';
 import { loadImage } from '../scene/textures.js';
@@ -15,10 +17,14 @@ const SLOTS = ['lower', 'full', 'upper'];
 const SLOT_LABEL = { upper: 'Överdel', lower: 'Underdel', full: 'Klänning' };
 
 const HINT = {
-  upper: 'Ställ dig 1–2 meter från kameran så att axlar och höfter syns.',
+  upper: 'Ställ dig 1–2 meter från kameran, rakt framifrån, så att båda axlarna syns.',
+  near: 'Backa lite – du är för nära kameran för att plagget ska passa.',
   lower: 'Backa så att höfter och knän syns i bild.',
   full: 'Backa så att du syns från axlarna ner till knäna.',
 };
+
+/** Axel-/höftbredden täcker mer än 42 % av bildens bredd → personen är för nära. */
+const isNear = (f) => !!f && Math.hypot(f.x2 - f.x1, f.y2 - f.y1) > 0.42;
 
 const newFilter = () => new MultiFilter(['x1', 'y1', 'x2', 'y2', 'x3', 'y3'], { minCutoff: 1.2, beta: 0.8 });
 
@@ -68,6 +74,7 @@ export default function TryOn() {
   const imgs = useRef(new Map()); // produkt-id -> HTMLImageElement
   const uploadImg = useRef(null);
   const uploadLms = useRef(null);
+  const uploadMask = useRef(null);
   const live = useRef({ frames: {}, busy: false, lastVideoTime: -1 });
   const filters = useRef({ upper: newFilter(), lower: newFilter(), full: newFilter() });
   const hintRef = useRef('');
@@ -197,8 +204,9 @@ export default function TryOn() {
       uploadImg.current = c;
       setStatus('Analyserar bilden …');
       uploadLms.current = await detectImage(c);
+      uploadMask.current = getLastMask();
       setStatus('');
-      if (!uploadLms.current) setError('Hittade ingen person i bilden. Använd en bild där hela personen syns – med ansiktet och ner till knäna – gärna rakt framifrån.');
+      if (!uploadLms.current) setError('Hittade ingen person i bilden. Använd en bild rakt framifrån där ansiktet och båda axlarna syns (för byxor och kjolar även höfter och knän).');
       redrawUpload();
     } catch (e) {
       console.error(e);
@@ -208,17 +216,35 @@ export default function TryOn() {
     }
   }
 
-  /** Ritar alla plagg i outfiten på ctx. frames: slot -> kroppsram. */
-  function drawOutfit(ctx, W, frames, alphaOf = () => 1) {
+  /** Ritar alla plagg i outfiten på ctx. frames: slot -> kroppsram. Returnerar ev. problem. */
+  function drawOutfit(ctx, W, frames, alphaOf = () => 1, arms = null) {
     const { outfit: o, adjusts: a, byId: b } = state.current;
+    let problem = '';
     for (const slot of SLOTS) {
       const id = o[slot];
       const p = b[id];
       const img = imgs.current.get(id);
-      const f = frames[slot];
-      if (!p || !img || !f) continue;
-      drawGarment(ctx, img, f, anchorsFor(p, slot), W, a[slot] ?? DEFAULT_ADJUST, alphaOf(slot));
+      if (!p || !img) continue;
+      // rensad plaggbild + ankare ur plaggets form (cachas per bild)
+      const prep = prepareGarment(img, slot);
+      if (!prep.ok) {
+        problem = `${p.name}: ${prep.reason} Välj ett annat plagg.`;
+        continue;
+      }
+      let f = frames[slot];
+      if (!f) continue;
+      const mask = arms?.mask;
+      // bredd efter kroppens kontur och klippning mot bakgrunden
+      if (mask) f = fitFrameToBody(f, mask, W, arms.H, arms.mirror, slot);
+      const clip = mask ? { canvas: maskCanvas(mask), mirror: arms.mirror } : null;
+      const adj = a[slot] ?? DEFAULT_ADJUST;
+      // byxor ben för ben när benen syns, annars hela plagget
+      if (slot === 'lower' && arms?.lms && drawTrousers(ctx, prep, f, arms.lms, W, arms.H, arms.mirror, adj, alphaOf(slot), clip)) continue;
+      drawPrepared(ctx, prep, f, W, adj, alphaOf(slot), clip);
     }
+    // armar och händer framför kroppen ska synas framför plagget
+    if (arms && Object.keys(frames).length) drawArmsOver(ctx, arms.raw, arms.lms, W, arms.H, arms.mirror);
+    return problem;
   }
 
   function redrawUpload() {
@@ -239,8 +265,9 @@ export default function TryOn() {
       frames[slot] = bodyFrame(lms, slot, src.width, src.height, false);
       if (!frames[slot]) missing.push(slot);
     }
-    setStatus(missing.length ? HINT[missing[0]] : '');
-    drawOutfit(ctx, src.width, frames);
+    const problem = drawOutfit(ctx, src.width, frames, undefined, { raw: src, lms, mask: uploadMask.current, H: src.height, mirror: false });
+    const near = Object.values(frames).some(isNear);
+    setStatus(problem || (missing.length ? HINT[missing[0]] : near ? HINT.near : ''));
   }
 
   // Rita om uppladdad bild när plagg eller reglage ändras (vänta in plaggbilder).
@@ -262,6 +289,7 @@ export default function TryOn() {
     if (!open || mode !== 'camera') return;
     let raf;
     const raw = document.createElement('canvas');
+    const det = document.createElement('canvas');
     rawRef.current = raw;
     const tick = () => {
       raf = requestAnimationFrame(tick);
@@ -286,8 +314,15 @@ export default function TryOn() {
       if (ready && slots.length && !L.busy && v.currentTime !== L.lastVideoTime) {
         L.busy = true;
         L.lastVideoTime = v.currentTime;
-        detectVideo(v, now)
+        // detektera på en nedskalad bild (snabbare, mindre mask att läsa)
+        const dk = Math.min(1, 480 / W);
+        det.width = Math.round(W * dk);
+        det.height = Math.round(H * dk);
+        det.getContext('2d').drawImage(v, 0, 0, det.width, det.height);
+        detectVideo(det, now)
           .then((lms) => {
+            L.lms = lms;
+            L.mask = getLastMask();
             for (const slot of slots) {
               const f = bodyFrame(lms, slot, W, H, true);
               if (f) L.frames[slot] = { frame: filters.current[slot].filter(f, now / 1000), at: performance.now() };
@@ -306,11 +341,12 @@ export default function TryOn() {
           filters.current[slot].reset();
         }
       }
-      drawOutfit(ctx, W, frames, (slot) => {
+      const problem = drawOutfit(ctx, W, frames, (slot) => {
         const age = now - (L.frames[slot]?.at ?? 0);
         return age < 250 ? 1 : Math.max(0, 1 - (age - 250) / (HOLD_MS - 250));
-      });
-      const hint = ready && missing ? HINT[missing] : '';
+      }, { raw, lms: L.lms, mask: L.mask, H, mirror: true });
+      const near = Object.values(frames).some(isNear);
+      const hint = problem || (ready && missing ? HINT[missing] : ready && near ? HINT.near : '');
       if (hint !== hintRef.current) setStatus((hintRef.current = hint));
     };
     tick();

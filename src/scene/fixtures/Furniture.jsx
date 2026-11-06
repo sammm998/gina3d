@@ -121,17 +121,18 @@ export function Gondola({ f }) {
         <boxGeometry args={[f.w - 0.04, 0.1, f.d - 0.04]} />
       </mesh>
       {/* mittvägg i ek */}
-      <mesh position-y={f.h / 2} material={MAT.oak}>
-        <boxGeometry args={[f.w - t * 2, f.h, 0.03]} />
+      <mesh position-y={(f.h - 0.045) / 2} material={MAT.oak}>
+        <boxGeometry args={[f.w - t * 2 - 0.004, f.h - 0.045, 0.03]} />
       </mesh>
+      {/* sidorna slutar under toppskivan (inga ytor i samma plan – inget flimmer) */}
       {[-1, 1].map((s) => (
-        <mesh key={s} position={[(s * (f.w - t)) / 2, f.h / 2, 0]} material={MAT.white}>
-          <boxGeometry args={[t, f.h, f.d]} />
+        <mesh key={s} position={[(s * (f.w - t)) / 2, (f.h - 0.045) / 2, 0]} material={MAT.white}>
+          <boxGeometry args={[t, f.h - 0.045, f.d - 0.004]} />
         </mesh>
       ))}
       {f.levels.map((y, i) => (
         <mesh key={i} position-y={y} material={i === 0 ? MAT.white : MAT.oak}>
-          <boxGeometry args={[f.w - t * 2, 0.025, f.d]} />
+          <boxGeometry args={[f.w - t * 2 - 0.004, 0.025, f.d - 0.006]} />
         </mesh>
       ))}
       <RoundedBox args={[f.w + 0.02, 0.04, f.d + 0.02]} radius={0.012} smoothness={2} position-y={f.h - 0.02} material={MAT.white} />

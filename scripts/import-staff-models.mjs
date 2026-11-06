@@ -19,7 +19,7 @@ const CAST = {
   sara: ['Female_Adult_11', 'f011'], // brun klänning
   ella: ['Female_Adult_08', 'f008'], // grått linne, jeans
   linnea: ['Female_Adult_14', 'f017'], // grå kavaj
-  ali: ['Male_Adult_09', 'm017'], // mörkblå t-shirt, jeans
+  mike: ['Male_Adult_09', 'm017'], // mörkblå t-shirt, jeans
   noah: ['Male_Adult_08', 'm014'], // ljusblå skjorta
 };
 /** Kunder som strosar runt i butiken (assets/models/shopper-*.glb). */

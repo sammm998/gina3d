@@ -10,6 +10,8 @@ import { FITTING_BOOTHS } from '../config/fixtures.js';
 import { staffState } from '../scene/staff/Staff.jsx';
 import { player } from '../nav/playerState.js';
 import { startTour, stopTour, useTourController } from './Tour.js';
+import { musicPreference, saveMusicPreference, startMusic, stopMusic } from '../audio/music.js';
+import CheckoutBanner from './CheckoutBanner.jsx';
 
 function Icon({ name }) {
   const paths = {
@@ -20,6 +22,9 @@ function Icon({ name }) {
     mouse: 'M12 3a5 5 0 0 0-5 5v8a5 5 0 0 0 10 0V8a5 5 0 0 0-5-5zm0 0v5',
     bag: 'M5 8h14l-1 12H6L5 8zm4 0V6a3 3 0 0 1 6 0v2',
     chat: 'M4 5h16v11H9l-5 4V5z',
+    grid: 'M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z',
+    music: 'M9 18V6l11-2v12M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm11-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
+    mute: 'M9 18V6l11-2v12M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm11-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM3 3l18 18',
   };
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" aria-hidden="true">
@@ -42,6 +47,13 @@ function Toast() {
 
 export default function Hud() {
   useTourController();
+  // bakgrundsmusik: på som standard (startar efter klicket in i butiken), valet sparas
+  const [music, setMusic] = useState(musicPreference);
+  useEffect(() => {
+    if (music) startMusic();
+    else stopMusic();
+  }, [music]);
+  const toggleMusic = () => setMusic((m) => { saveMusicPreference(!m); return !m; });
   const isTouch = useStore((s) => s.isTouch);
   const locked = useStore((s) => s.pointerLocked);
   const tour = useStore((s) => s.tour);
@@ -119,6 +131,13 @@ export default function Hud() {
             <span className="hide-sm">Kundkorg</span>
             {cartCount > 0 && <span className="badge">{cartCount}</span>}
           </button>
+          <a className="btn btn--ghost" href="/katalog" aria-label="Katalog">
+            <Icon name="grid" />
+            <span className="hide-sm">Katalog</span>
+          </a>
+          <button className={`btn btn--ghost ${music ? 'is-on' : ''}`} onClick={toggleMusic} aria-pressed={music} aria-label={music ? 'Stäng av musiken' : 'Sätt på musiken'} title={music ? 'Musik på' : 'Musik av'}>
+            <Icon name={music ? 'music' : 'mute'} />
+          </button>
           <button className="btn btn--ghost" onClick={() => setWishlistOpen(true)} aria-label={t('hud.wishlist')}>
             <Icon name="heart" />
             <span className="hide-sm">{t('hud.wishlist')}</span>
@@ -127,6 +146,7 @@ export default function Hud() {
         </div>
       </header>
 
+      <CheckoutBanner />
       {mapOpen && <Minimap onNavigate={() => window.innerWidth < 700 && setMapOpen(false)} />}
 
       {locked && (

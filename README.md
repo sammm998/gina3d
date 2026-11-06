@@ -117,6 +117,8 @@ miljövariabler på tjänsten:
 | `GT_DEBUG` | `1` | skriver ut bildanalysen i byggloggen |
 | `PORT` | `8080` | serverns port |
 | `ANTHROPIC_API_KEY` | – | aktiverar AI-personalen i chatten |
+| `STRIPE_SECRET_KEY` | – | aktiverar kortbetalning i kundkorgen (Stripe Checkout). Börja med `sk_test_…` |
+| `GT_CRAWL` | `1` | `0` stänger av serverns bakgrundscrawl av produktsidor (pris, bild, storlekar) |
 
 Importen läser produktsidornas strukturerade data (JSON-LD: namn, pris, färg, material,
 bilder), laddar ner bilderna, hittar den bild som är en ren produktbild (ingen hud, jämn
@@ -307,9 +309,27 @@ sidohängda plagg får tyg och färg utsnittade ur fotot.
   klänning, och justerar varje plagg för sig. **Prova direkt här** öppnar provningen på plats.
 - Köpet görs på ginatricot.com: korgen länkar till varje produktsida.
 
+## Katalog och betalning
+
+- **/katalog** visar hela sortimentet från ginatricot.com (ca 8 400 produkter från sitemapen) med
+  sök, kategorier, bilder, priser och storlekar. Servern (`server/shop.mjs`) läser varje
+  produktsida i en långsam bakgrundscrawl efter start, och plagg som visas i katalogen hämtas
+  direkt. Plagg från katalogen kan läggas i samma kundkorg som plaggen i 3D-butiken.
+- **Kassa:** ”Till kassan – betala med kort” skapar en Stripe Checkout-session på servern.
+  Priserna hämtas alltid av servern (inte från webbläsaren). Efter betalningen visas ett kvitto
+  och korgen töms. Sätt `STRIPE_SECRET_KEY` på Railway (tjänsten → Variables). Testa med en
+  `sk_test_…`-nyckel och testkortet 4242 4242 4242 4242.
+- Skarpa betalningar (`sk_live_…`) ska bara användas av den som faktiskt säljer och skickar
+  varorna, alltså Gina Tricots eget Stripe-konto med en orderhantering kopplad till lagret.
+
+## Bakgrundsmusik
+
+Musikknappen i menyn sätter på och stänger av bakgrundsmusiken (valet sparas). Musiken skapas
+i webbläsaren med Web Audio (`src/audio/music.js`): lugn lounge-house i 116 BPM, utan ljudfiler.
+
 ## Personal och chatt
 
-Sju medarbetare finns i butiken (`src/config/staff.js`): Emma och Ali går runt på plan 1 och
+Sju medarbetare finns i butiken (`src/config/staff.js`): Emma och Mike går runt på plan 1 och
 Maja står alltid i kassan; Sara och Noah finns på plan 2, Linnéa och Ella på plan 3. De går mellan sina zoner, stannar och vänder sig mot dig när du
 kommer nära, och gestikulerar när ni chattar. Klicka på en medarbetare eller på
 **Fråga personalen** för att chatta.

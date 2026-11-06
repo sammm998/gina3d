@@ -33,6 +33,19 @@ function staticRootDirs() {
         const { handleChat } = await import(/* @vite-ignore */ pathToFileURL(path.resolve('server/chat.mjs')).href);
         handleChat(req, res);
       });
+      // katalog och kassa i dev-läge
+      let shop = null;
+      const shopHandler = async (req, res) => {
+        if (!shop) {
+          process.env.GT_CRAWL ??= '0'; // ingen bakgrundscrawl i dev
+          shop = await import(/* @vite-ignore */ pathToFileURL(path.resolve('server/shop.mjs')).href);
+          shop.initShop(path.resolve('data'));
+        }
+        req.url = req.originalUrl;
+        shop.handleShop(req, res);
+      };
+      server.middlewares.use('/api/catalog', shopHandler);
+      server.middlewares.use('/api/checkout', shopHandler);
       server.middlewares.use((req, res, next) => {
         const url = decodeURIComponent((req.url || '').split('?')[0]);
         for (const [prefix, dir] of Object.entries(STATIC_DIRS)) {

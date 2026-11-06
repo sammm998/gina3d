@@ -77,16 +77,21 @@ export const useStore = create((set, get) => ({
   setWishlistOpen: (wishlistOpen) => set({ wishlistOpen, cartOpen: false }),
 
   // --- kundkorg (sparas lokalt i webbläsaren)
-  cart: loadCart(), // [{ key, id, size, color }]
+  cart: loadCart(), // [{ key, id, size, color, snap? }]
   cartOpen: false,
-  addToCart: (id, size = null, color = null) => {
+  /** snap = { name, price, currency, image, url } för plagg från katalogen (som inte finns i 3D-butiken) */
+  addToCart: (id, size = null, color = null, snap = null) => {
     const key = `${id}|${size ?? ''}|${color ?? ''}`;
     const cur = get().cart;
     if (cur.some((x) => x.key === key)) return false;
-    const next = [...cur, { key, id, size, color }];
+    const next = [...cur, { key, id, size, color, ...(snap ? { snap } : {}) }];
     saveCart(next);
     set({ cart: next });
     return true;
+  },
+  clearCart: () => {
+    saveCart([]);
+    set({ cart: [] });
   },
   removeFromCart: (key) => {
     const next = get().cart.filter((x) => x.key !== key);

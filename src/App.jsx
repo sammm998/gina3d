@@ -11,8 +11,23 @@ import { useStore } from './state/useStore.js';
 import { buildWorld } from './nav/world.js';
 import { FIXTURES } from './config/fixtures.js';
 import { loadProducts } from './data/products.js';
+import Catalog from './ui/Catalog.jsx';
+
+const IS_CATALOG = window.location.pathname.replace(/\/$/, '') === '/katalog';
 
 export default function App() {
+  return IS_CATALOG ? <CatalogApp /> : <StoreApp />;
+}
+
+function CatalogApp() {
+  useEffect(() => {
+    document.title = 'Katalog – Gina Tricot';
+    loadProducts().then((p) => useStore.getState().setProducts(p)).catch(() => {});
+  }, []);
+  return <Catalog />;
+}
+
+function StoreApp() {
   const entered = useStore((s) => s.entered);
   const hasPanel = useStore((s) => !!s.selectedId || s.wishlistOpen || s.cartOpen || s.chat.open);
   const [ready, setReady] = useState(false);

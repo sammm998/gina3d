@@ -72,6 +72,20 @@ const curvedPlane = (() => {
   return g;
 })();
 
+// material delas mellan alla exemplar av samma plaggbild
+const matCache = new WeakMap();
+function sharedMaterials(tex, dim) {
+  if (!tex) return null;
+  const c = matCache.get(tex) ?? {};
+  if (!c[dim]) {
+    const m = inflatedMaterials(tex);
+    if (dim) m.forEach((x) => x.color.multiplyScalar(0.78));
+    c[dim] = m;
+    matCache.set(tex, c);
+  }
+  return c[dim];
+}
+
 function FaceOut({ entry }) {
   const { product: p, slot } = entry;
   const tex = useLazyTexture(p.tryOnImage, slot.pos, 15);
@@ -82,13 +96,8 @@ function FaceOut({ entry }) {
   const ev = useMemo(() => productEvents(p.id), [p.id]);
   // 3D-plagg ur den frilagda bilden (volym, fram- och baksida)
   const geom = useMemo(() => (tex?.image && p.tryOnImage ? inflatedGeometry(tex.image) : null), [tex, p.tryOnImage]);
-  const mats = useMemo(() => (tex ? inflatedMaterials(tex) : null), [tex]);
-  const backMats = useMemo(() => {
-    if (!tex) return null;
-    const m = inflatedMaterials(tex);
-    m.forEach((x) => x.color.multiplyScalar(0.78));
-    return m;
-  }, [tex]);
+  const mats = useMemo(() => sharedMaterials(tex, 0), [tex]);
+  const backMats = useMemo(() => sharedMaterials(tex, 1), [tex]);
   useEffect(() => {
     if (!mats) return;
     mats[0].emissive.set(hl ? '#ffffff' : '#000000');
@@ -103,7 +112,7 @@ function FaceOut({ entry }) {
         <group position={[0, -L / 2 + topOffset - 0.02, depth * 0.85]} scale={hl ? 1.025 : 1}>
           <mesh geometry={geom} material={mats} scale={[L, L, depth]} userData={{ productId: p.id }} {...ev} castShadow={false} />
           {/* fler storlekar av samma plagg bakom */}
-          <mesh geometry={geom} material={backMats} scale={[L, L, depth]} position={[0.012, 0.006, -depth * 1.7]} raycast={() => null} />
+          {backMats && <mesh geometry={geom} material={backMats} scale={[L, L, depth]} position={[0.012, 0.006, -depth * 1.7]} raycast={() => null} />}
         </group>
       )}
     </group>
@@ -113,33 +122,90 @@ function FaceOut({ entry }) {
 /* ------------------------------------------------------------------ sidohängda */
 
 /**
- * Sidoprofil av ett hängande plagg: sluttande axlar från galgen, raka sidor
- * och en lätt utsvängd fåll. Normaliserad till 1 × 1 × 1 och skalas per instans.
+ * Silhuetter för sidohängda plagg per plaggtyp (framsidans kontur, normaliserad
+ * till 1 × 1 och extruderad till tjockleken 1 – skalas per instans).
+ * Tröjor/jackor: sluttande axlar och ärmar som hänger längs sidorna;
+ * klänningar: smal midja och utsvängd fåll; kjolar: A-linje; byxor: två ben.
  */
-const sideGeom = (() => {
+function silhouette(kind) {
   const s = new THREE.Shape();
-  s.moveTo(-0.06, 0.5);
-  s.quadraticCurveTo(-0.3, 0.47, -0.46, 0.36);
-  s.quadraticCurveTo(-0.5, 0.3, -0.49, 0.1);
-  s.lineTo(-0.5, -0.46);
-  s.quadraticCurveTo(-0.5, -0.5, -0.45, -0.5);
-  s.lineTo(0.45, -0.5);
-  s.quadraticCurveTo(0.5, -0.5, 0.5, -0.46);
-  s.lineTo(0.49, 0.1);
-  s.quadraticCurveTo(0.5, 0.3, 0.46, 0.36);
-  s.quadraticCurveTo(0.3, 0.47, 0.06, 0.5);
-  s.lineTo(-0.06, 0.5);
-  const g = new THREE.ExtrudeGeometry(s, { depth: 1, bevelEnabled: true, bevelThickness: 0.25, bevelSize: 0.012, bevelSegments: 3, curveSegments: 6 });
+  if (kind === 'lower') {
+    // byxor hängda i midjan med klämgalge
+    s.moveTo(-0.46, 0.5);
+    s.lineTo(0.46, 0.5);
+    s.quadraticCurveTo(0.5, 0.2, 0.47, -0.5);
+    s.lineTo(0.07, -0.5);
+    s.quadraticCurveTo(0.03, -0.05, 0, 0.08);
+    s.quadraticCurveTo(-0.03, -0.05, -0.07, -0.5);
+    s.lineTo(-0.47, -0.5);
+    s.quadraticCurveTo(-0.5, 0.2, -0.46, 0.5);
+  } else if (kind === 'skirt') {
+    s.moveTo(-0.34, 0.5);
+    s.lineTo(0.34, 0.5);
+    s.quadraticCurveTo(0.42, 0.1, 0.5, -0.46);
+    s.quadraticCurveTo(0.25, -0.52, 0, -0.5);
+    s.quadraticCurveTo(-0.25, -0.52, -0.5, -0.46);
+    s.quadraticCurveTo(-0.42, 0.1, -0.34, 0.5);
+  } else if (kind === 'full') {
+    s.moveTo(-0.08, 0.5);
+    s.quadraticCurveTo(-0.24, 0.48, -0.32, 0.4);
+    s.quadraticCurveTo(-0.36, 0.25, -0.3, 0.12);
+    s.quadraticCurveTo(-0.27, 0.05, -0.3, -0.05);
+    s.quadraticCurveTo(-0.45, -0.3, -0.5, -0.47);
+    s.quadraticCurveTo(-0.25, -0.53, 0, -0.5);
+    s.quadraticCurveTo(0.25, -0.53, 0.5, -0.47);
+    s.quadraticCurveTo(0.45, -0.3, 0.3, -0.05);
+    s.quadraticCurveTo(0.27, 0.05, 0.3, 0.12);
+    s.quadraticCurveTo(0.36, 0.25, 0.32, 0.4);
+    s.quadraticCurveTo(0.24, 0.48, 0.08, 0.5);
+    s.quadraticCurveTo(0, 0.42, -0.08, 0.5);
+  } else {
+    // tröja/jacka: axlar, ärmar längs sidorna och en lätt rundad fåll
+    s.moveTo(-0.07, 0.5);
+    s.quadraticCurveTo(-0.3, 0.47, -0.46, 0.38);
+    s.quadraticCurveTo(-0.52, 0.3, -0.5, 0.12);
+    s.lineTo(-0.5, -0.44);
+    s.quadraticCurveTo(-0.5, -0.5, -0.44, -0.5);
+    s.quadraticCurveTo(0, -0.47, 0.44, -0.5);
+    s.quadraticCurveTo(0.5, -0.5, 0.5, -0.44);
+    s.lineTo(0.5, 0.12);
+    s.quadraticCurveTo(0.52, 0.3, 0.46, 0.38);
+    s.quadraticCurveTo(0.3, 0.47, 0.07, 0.5);
+    s.quadraticCurveTo(0, 0.44, -0.07, 0.5);
+  }
+  const g = new THREE.ExtrudeGeometry(s, { depth: 1, bevelEnabled: true, bevelThickness: 0.25, bevelSize: 0.012, bevelSegments: 3, curveSegments: 8 });
   g.translate(0, 0, -0.5);
-  g.scale(1, 1, 0.66); // kompenserar för fasningen så att tjockleken blir ~1
+  g.scale(1, 1, 0.66);
+  // mjuka veck: tyget böljar lite längs bredden och mest nedtill
+  const pos = g.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i);
+    // tygets tjocklek: fylligast i mitten, tunt mot kanterna (inga "plankor")
+    const body = 0.3 + 0.7 * Math.cos(Math.min(1, Math.abs(x) / 0.52) * Math.PI * 0.5);
+    // veck och fall som blir djupare nedåt
+    const fold = Math.sin(x * 17 + y * 2.5) * 0.28 * Math.max(0, 0.35 - y) + Math.sin(x * 7.3) * 0.12;
+    pos.setZ(i, pos.getZ(i) * body + fold);
+  }
   g.rotateY(Math.PI / 2); // profilen ligger i z/y, tjockleken längs x (längs stången)
   g.computeVertexNormals();
   return g;
+}
+const SIDE_GEOMS = {};
+const sideGeomFor = (p) => {
+  const k = garmentClass(p);
+  const key = k === 'lower' || k === 'skirt' || k === 'full' ? k : 'upper';
+  return (SIDE_GEOMS[key] ??= silhouette(key));
+};
+/** Galgens axelbåge (svart, i plaggets breddriktning). */
+const hangerBarGeom = (() => {
+  const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(0, -0.035, -0.21), new THREE.Vector3(0, 0.025, 0), new THREE.Vector3(0, -0.035, 0.21));
+  return new THREE.TubeGeometry(curve, 12, 0.006, 5, false);
 })();
 const hookGeom = new THREE.TorusGeometry(0.018, 0.0028, 5, 12, Math.PI * 1.3);
 
 function SideHung({ entries }) {
   const hooks = useRef();
+  const bars = useRef();
   const { items } = useMemo(() => {
     const items = [];
     entries.forEach((en, ei) => {
@@ -173,18 +239,25 @@ function SideHung({ entries }) {
   }, [entries]);
 
   useLayoutEffect(() => {
-    items.forEach((it, i) => hooks.current.setMatrixAt(i, compose(it.x, it.hookY, it.z, it.ry + Math.PI / 2, 1, 1, 1)));
+    if (!hooks.current) return;
+    items.forEach((it, i) => {
+      hooks.current.setMatrixAt(i, compose(it.x, it.hookY, it.z, it.ry + Math.PI / 2, 1, 1, 1));
+      // galgen sitter i plaggets överkant och är lika bred som axlarna
+      bars.current.setMatrixAt(i, compose(it.x, it.y + it.L / 2 + 0.012, it.z, it.ry, 1, 1, it.depth / 0.46));
+    });
     hooks.current.instanceMatrix.needsUpdate = true;
+    bars.current.instanceMatrix.needsUpdate = true;
   }, [items]);
   const groups = useMemo(() => groupByProduct(items), [items]);
   if (!items.length) return null;
   return (
     <group>
       {Object.entries(groups).map(([id, list]) => (
-        <FabricInstances key={id} product={list[0].p} geom={sideGeom} items={list} repeat={fabricKind(list[0].p) === 'denim' ? 34 : 22}
+        <FabricInstances key={id} product={list[0].p} geom={sideGeomFor(list[0].p)} items={list} repeat={fabricKind(list[0].p) === 'denim' ? 34 : 22}
           matrixOf={(it) => compose(it.x, it.y, it.z, it.ry, it.thick, it.L, it.depth, 0, it.rz)} />
       ))}
       <instancedMesh ref={hooks} args={[hookGeom, MAT.chrome, items.length]} raycast={() => null} />
+      <instancedMesh ref={bars} args={[hangerBarGeom, MAT.black, items.length]} raycast={() => null} />
     </group>
   );
 }

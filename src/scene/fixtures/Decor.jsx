@@ -168,10 +168,10 @@ export function FramedPhoto({ f }) {
       <mesh position-z={0.015} material={MAT.black}>
         <boxGeometry args={[f.w, f.h, 0.03]} />
       </mesh>
-      <mesh position-z={0.031} material={MAT.white}>
+      <mesh position-z={0.036} material={MAT.white}>
         <planeGeometry args={[f.w - border * 2, f.h - border * 2]} />
       </mesh>
-      <mesh position-z={0.037}>
+      <mesh position-z={0.044}>
         <planeGeometry args={[iw, ih]} />
         <meshStandardMaterial key={tex ? 'tex' : 'none'} map={tex} color={tex ? '#ffffff' : '#ddd6cc'} roughness={0.35} envMapIntensity={0.6} />
       </mesh>
@@ -189,7 +189,7 @@ export function Lightbox({ f }) {
       <mesh position-z={0.045} material={MAT.chrome}>
         <boxGeometry args={[f.w, f.h, 0.09]} />
       </mesh>
-      <mesh position-z={0.0915} raycast={() => null}>
+      <mesh position-z={0.098} raycast={() => null}>
         <planeGeometry args={[f.w - frame * 2, f.h - frame * 2]} />
         <meshBasicMaterial key={tex ? 'tex' : 'none'} map={tex} color={tex ? '#f4f1ec' : '#e9e4dc'} toneMapped={false} />
       </mesh>
