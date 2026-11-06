@@ -13,7 +13,8 @@
     "fetch-model": "node scripts/fetch-pose-model.mjs",
     "import:ginatricot": "node scripts/import-ginatricot.mjs",
     "start": "node server.mjs",
-    "models": "node scripts/build-models.mjs"
+    "models": "node scripts/build-models.mjs",
+    "staff-models": "node scripts/import-staff-models.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",

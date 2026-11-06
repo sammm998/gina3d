@@ -135,11 +135,34 @@ export function Plant({ f }) {
   );
 }
 
-/** Inramat modefoto på väggen. */
+/**
+ * Beskär en textur som CSS "object-fit: cover" för en yta med bredd/höjd = aspect
+ * (bilden sträcks aldrig ut). Klonen delar bilddata med originalet.
+ */
+export function useCoverTexture(tex, aspect) {
+  return useMemo(() => {
+    if (!tex?.image) return null;
+    const t = tex.clone();
+    const ia = (tex.image.width || 1) / (tex.image.height || 1);
+    if (ia > aspect) {
+      t.repeat.set(aspect / ia, 1);
+      t.offset.set((1 - aspect / ia) / 2, 0);
+    } else {
+      // stående foto i liggande ram: behåll överdelen (ansikte/överkropp)
+      t.repeat.set(1, ia / aspect);
+      t.offset.set(0, 1 - ia / aspect - (1 - ia / aspect) * 0.25);
+    }
+    t.needsUpdate = true;
+    return t;
+  }, [tex, aspect]);
+}
+
+/** Inramat modefoto på väggen (svart ram, vit passepartout). */
 export function FramedPhoto({ f }) {
   const url = PATHS.photos[f.image % PATHS.photos.length];
-  const tex = useLazyTexture(url, [f.x, f.y, f.z], 20);
   const border = 0.035, mat = 0.07;
+  const iw = f.w - (border + mat) * 2, ih = f.h - (border + mat) * 2;
+  const tex = useCoverTexture(useLazyTexture(url, [f.x, f.y, f.z], 20), iw / ih);
   return (
     <group position={[f.x, f.y, f.z]} rotation-y={f.rot}>
       <mesh position-z={0.015} material={MAT.black}>
@@ -149,9 +172,60 @@ export function FramedPhoto({ f }) {
         <planeGeometry args={[f.w - border * 2, f.h - border * 2]} />
       </mesh>
       <mesh position-z={0.037}>
-        <planeGeometry args={[f.w - (border + mat) * 2, f.h - (border + mat) * 2]} />
-        <meshStandardMaterial key={tex ? 'tex' : 'none'} map={tex} color={tex ? '#ffffff' : '#ddd6cc'} roughness={0.6} />
+        <planeGeometry args={[iw, ih]} />
+        <meshStandardMaterial key={tex ? 'tex' : 'none'} map={tex} color={tex ? '#ffffff' : '#ddd6cc'} roughness={0.35} envMapIntensity={0.6} />
       </mesh>
+    </group>
+  );
+}
+
+/** Stor bakbelyst kampanjbild – tunn aluminiumram och självlysande bild. */
+export function Lightbox({ f }) {
+  const url = PATHS.campaign[f.image % PATHS.campaign.length];
+  const frame = 0.05;
+  const tex = useCoverTexture(useLazyTexture(url, [f.x, f.y, f.z], 26), (f.w - frame * 2) / (f.h - frame * 2));
+  return (
+    <group position={[f.x, f.y, f.z]} rotation-y={f.rot}>
+      <mesh position-z={0.045} material={MAT.chrome}>
+        <boxGeometry args={[f.w, f.h, 0.09]} />
+      </mesh>
+      <mesh position-z={0.0915} raycast={() => null}>
+        <planeGeometry args={[f.w - frame * 2, f.h - frame * 2]} />
+        <meshBasicMaterial key={tex ? 'tex' : 'none'} map={tex} color={tex ? '#f4f1ec' : '#e9e4dc'} toneMapped={false} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Fristående affischställ i svart metall med bild på båda sidor. */
+export function PosterStand({ f }) {
+  const url = PATHS.photos[f.image % PATHS.photos.length];
+  const pw = f.w - 0.06, ph = f.h - 0.5;
+  const tex = useCoverTexture(useLazyTexture(url, [f.x, 1.2, f.z], 18), pw / ph);
+  const y0 = 0.38;
+  return (
+    <group position={[f.x, 0, f.z]} rotation-y={f.rot}>
+      {/* fot */}
+      <mesh position-y={0.012} material={MAT.black}>
+        <boxGeometry args={[0.84, 0.024, 0.4]} />
+      </mesh>
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[(s * (f.w - 0.02)) / 2, f.h / 2, 0]} material={MAT.black}>
+          <boxGeometry args={[0.022, f.h, 0.022]} />
+        </mesh>
+      ))}
+      <mesh position={[0, f.h - 0.011, 0]} material={MAT.black}>
+        <boxGeometry args={[f.w, 0.022, 0.022]} />
+      </mesh>
+      <mesh position={[0, y0 - 0.011, 0]} material={MAT.black}>
+        <boxGeometry args={[f.w, 0.022, 0.022]} />
+      </mesh>
+      {[1, -1].map((s) => (
+        <mesh key={s} position={[0, y0 + ph / 2 + 0.03, s * 0.006]} rotation-y={s < 0 ? Math.PI : 0}>
+          <planeGeometry args={[pw, ph]} />
+          <meshStandardMaterial key={tex ? 'tex' : 'none'} map={tex} color={tex ? '#ffffff' : '#ddd6cc'} roughness={0.3} />
+        </mesh>
+      ))}
     </group>
   );
 }

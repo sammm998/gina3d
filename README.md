@@ -326,18 +326,21 @@ Chatten (`server/chat.mjs`, `POST /api/chat`):
 - Sortimentet läses från sajtens sitemap vid varje bygge (`data/catalog.json`, cirka 10 000
   produkter); detaljerna hämtas live och cachas en timme. Chatten är märkt som AI-assistent.
 
-### Egna 3D-modeller av personalen (.glb)
+### Realistiska människor (personal och kunder)
 
-`npm run models` bygger personalen med `tools/modelgen.js` och sparar den som
-`assets/models/staff-*.glb`. Varje modell har:
+Personalen och fyra kunder som strosar runt (`SHOPPERS` i `src/config/staff.js`) är realistiska
+människomodeller med rörelsefångad gång, vila och gestikulering från
+[Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox) (MIT-licens, © 2020
+Microsoft). `npm run staff-models` hämtar avatarerna och animationerna, konverterar FBX → `.glb`
+i en headless-webbläsare (`tools/rocketbox.js`) och sparar `assets/models/staff-*.glb` och
+`shopper-*.glb`. Ändra vem som är vem i `CAST`/`SHOPPERS` i `scripts/import-staff-models.mjs`.
 
-- kropp, ansikte, hår, kläder, skor och namnskylt
-- ett skelett med 17 ben
-- animationerna `Walk`, `Idle` och `Talk`
-
-Ändra utseenden (hudton, hår, kläder, längd) i `STAFF` i generatorn och kör skriptet igen. Vill
-du ha fotorealistiska människor kan `model` i `src/config/staff.js` peka på valfri riggad `.glb`
-med samma animationsnamn (till exempel från Mixamo eller Ready Player Me).
+- Varje modell: skinnad mesh med 80 ben, PBR-material (färg + normalkarta), hår med alfa,
+  klippen `Walk` (gång på stället – appen flyttar personen och anpassar stegtakten), `Idle`, `Talk`.
+- Cirka 3 MB per modell. Modellerna laddas först när du kommer till respektive våning.
+- Kunder går inte att chatta med och har ingen namnskylt.
+- Den äldre procedurella generatorn (`npm run models`, `tools/modelgen.js`) finns kvar och
+  skriver till `assets/models/procedural/`.
 
 ## AR-provning – testad
 
@@ -427,6 +430,10 @@ Målet är 60 fps på en vanlig laptop:
   NeutralToneMapping, SMAA och golvreflexer i polerat kakel. Allt sänks automatiskt vid låg fps.
 - Lazy-loading: produkt-, kampanj- och fototexturer hämtas först när du närmar dig (max fyra
   samtidigt). Panelens bilder har `loading="lazy"`. MediaPipe laddas först när provningen öppnas.
+
+Inredning på varje våning: hyllväggar, dubbelsidiga hyllgondoler, svävande väggylor med väskor
+och skor, inramade modefoton i rader ovanför klädstängerna, stora bakbelysta ljuslådor bakom
+rulltrapporna och fristående affischställ.
 
 **Vad som ger mest realism härnäst:** riktiga produktfoton som frilagda PNG:er (`tryOnImage`),
 riktiga kampanjbilder i `assets/campaign/` och `assets/photos/`, samt skannade eller modellerade

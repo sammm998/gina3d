@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { ContactShadows, Environment, Lightformer, PerformanceMonitor } from '@react-three/drei';
 import { Bloom, EffectComposer, N8AO, SMAA, ToneMapping, Vignette } from '@react-three/postprocessing';
@@ -12,6 +12,7 @@ import Storefront from './Storefront.jsx';
 import StoreContent from './StoreContent.jsx';
 import { FLOOR_H, LEVELS, STORE } from '../config/storeConfig.js';
 import { useStore } from '../state/useStore.js';
+import { hideStaffForBake } from './staff/Staff.jsx';
 
 const QUALITY_LEVELS = ['low', 'medium', 'high'];
 
@@ -42,6 +43,8 @@ function Lighting() {
 /** Mjuka kontaktskuggor under möbler och plagg – renderas om bara när layouten ändras. */
 function BakedShadows() {
   const version = useStore((s) => s.layoutVersion);
+  // personalen rör sig – den ska inte bakas in som fasta skuggor
+  useMemo(() => hideStaffForBake(), [version]);
   return LEVELS.map((l) => l.id * FLOOR_H).map((y) => (
     <ContactShadows
       key={`${version}-${y}`}
@@ -123,6 +126,7 @@ export default function Experience({ children }) {
       }}
       onCreated={({ scene }) => {
         scene.background = new THREE.Color('#ecebe8');
+        if (import.meta.env.DEV) window.__scene = scene;
       }}
     >
       <PerformanceMonitor

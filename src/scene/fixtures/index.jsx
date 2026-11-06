@@ -1,7 +1,7 @@
 import { FIXTURES } from '../../config/fixtures.js';
-import { CashDesk, Platform, Podium, RoundPlatform, Shelf, Table } from './Furniture.jsx';
+import { CashDesk, Gondola, Platform, Podium, RoundPlatform, Shelf, Table, WallShelves } from './Furniture.jsx';
 import { FreeRail, WallBay } from './Rails.jsx';
-import { DigitalScreen, FittingRooms, FramedPhoto, Plant, TryOnMirror, WallLogo, WallText } from './Decor.jsx';
+import { DigitalScreen, FittingRooms, FramedPhoto, Lightbox, Plant, PosterStand, TryOnMirror, WallLogo, WallText } from './Decor.jsx';
 import Mannequin from './Mannequin.jsx';
 import ModelOrFallback from '../ModelOrFallback.jsx';
 import { FLOOR_H, MODELS } from '../../config/storeConfig.js';
@@ -27,6 +27,10 @@ export const FIXTURE_COMPONENTS = {
   wallLogo: WallLogo,
   fittingRooms: FittingRooms,
   tryOnMirror: TryOnMirror,
+  gondola: Gondola,
+  wallShelves: WallShelves,
+  posterStand: PosterStand,
+  lightbox: Lightbox,
 };
 
 /** Möbeltyper som kan ersättas med en .glb via MODELS i storeConfig.js. */

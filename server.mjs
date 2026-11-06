@@ -15,7 +15,7 @@ const MIME = {
   '.wasm': 'application/wasm', '.glb': 'model/gltf-binary', '.task': 'application/octet-stream',
   '.md': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8',
 };
-const COMPRESS = new Set(['.html', '.js', '.mjs', '.css', '.json', '.svg', '.wasm', '.task']);
+const COMPRESS = new Set(['.glb', '.html', '.js', '.mjs', '.css', '.json', '.svg', '.wasm', '.task']);
 
 initChat(path.join(DIST, 'data'));
 

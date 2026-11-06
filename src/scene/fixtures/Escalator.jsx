@@ -143,6 +143,9 @@ function Truss({ E, G }) {
     for (let z = z0; z < z1; z += 0.1) zs.push(z);
     zs.push(z1, E.zBottom, E.zTop);
     zs.sort((a, b) => a - b);
+    // inga nästan dubbla punkter – de ger trianglar utan yta och NaN-normaler
+    // (som bloom-effekten sprider till en helt svart bild)
+    for (let i = zs.length - 1; i > 0; i--) if (zs[i] - zs[i - 1] < 0.02) zs.splice(i, 1);
     const s = new THREE.Shape();
     zs.forEach((z, i) => (i ? s.lineTo(z, top(z)) : s.moveTo(z, top(z))));
     [...zs].reverse().forEach((z) => s.lineTo(z, Math.min(top(z) - 0.01, bottom(z))));
@@ -152,6 +155,17 @@ function Truss({ E, G }) {
     g.rotateY(-Math.PI / 2); // shape-x -> världens z, extrudering -> världens −x
     g.translate(E.maxX + 0.04, 0, 0);
     g.computeVertexNormals();
+    // Sidornas triangulering ger trianglar utan yta (raka punkter längs rampen) →
+    // nollnormaler → NaN i shadern, som bloom sprider till en helt svart bild.
+    // Sätt sidoytornas normal (±x) där den saknas.
+    const n = g.attributes.normal.array, p = g.attributes.position.array;
+    const midX = E.maxX + 0.04 - width / 2;
+    for (let i = 0; i < n.length; i += 3) {
+      const len = Math.hypot(n[i], n[i + 1], n[i + 2]);
+      if (!(len > 1e-6)) {
+        n[i] = p[i] > midX ? 1 : -1; n[i + 1] = 0; n[i + 2] = 0;
+      }
+    }
     return g;
   }, [E, G]);
   return <mesh geometry={geom} material={matCladding} />;

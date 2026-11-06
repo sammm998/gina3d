@@ -1,8 +1,8 @@
 /**
- * Butikspersonalen. Modellerna är egna .glb-filer (assets/models/staff-*.glb,
- * skapade med `npm run models` – se tools/modelgen.js). Byt `model` mot en
- * annan riggad .glb med animationerna "Walk", "Idle" och "Talk" för andra
- * utseenden, t.ex. en fotorealistisk avatar.
+ * Butikspersonalen. Modellerna (assets/models/staff-*.glb) är realistiska
+ * människomodeller med rörelsefångade animationer från Microsoft Rocketbox
+ * (MIT-licens), konverterade med `npm run staff-models`. Byt `model` mot en
+ * annan riggad .glb med animationerna "Walk", "Idle" och "Talk" för andra utseenden.
  */
 export const STAFF = [
   {
@@ -35,6 +35,14 @@ export const STAFF = [
     id: 'linnea', name: 'Linnéa', model: '/assets/models/staff-linnea.glb', level: 2, zones: ['knit', 'trousers'],
     greeting: 'Hej, Linnéa här! Fråga mig gärna om stickat, byxor och passformer.',
   },
+];
+
+/** Kunder som strosar runt och tittar på kläderna (går inte att chatta med). */
+export const SHOPPERS = [
+  { id: 'kund-1', shopper: true, model: '/assets/models/shopper-1.glb', level: 0, zones: ['entrance', 'tops', 'accessories', 'denim'] },
+  { id: 'kund-2', shopper: true, model: '/assets/models/shopper-2.glb', level: 0, zones: ['denim', 'outerwear', 'tops'] },
+  { id: 'kund-3', shopper: true, model: '/assets/models/shopper-3.glb', level: 1, zones: ['dresses', 'party'] },
+  { id: 'kund-4', shopper: true, model: '/assets/models/shopper-4.glb', level: 2, zones: ['trousers', 'knit'] },
 ];
 
 export const staffById = (id) => STAFF.find((s) => s.id === id);

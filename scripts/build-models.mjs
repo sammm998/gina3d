@@ -9,7 +9,8 @@ import { createServer } from 'vite';
 import { createRequire } from 'node:module';
 // Playwright kan vara installerat globalt (t.ex. i CI-/molnmiljöer) – require hittar det.
 const { chromium } = createRequire(import.meta.url)('playwright');
-const out = path.resolve('assets/models');
+// (egna, procedurella modeller – personalen använder numera Rocketbox-modellerna, se npm run staff-models)
+const out = path.resolve('assets/models/procedural');
 fs.mkdirSync(out, { recursive: true });
 
 const server = await createServer({ server: { port: 5199, strictPort: false }, logLevel: 'error' });

@@ -1,9 +1,9 @@
-import { Suspense, useEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
-import { STAFF } from '../../config/staff.js';
+import { SHOPPERS, STAFF } from '../../config/staff.js';
 import { FLOOR_H } from '../../config/storeConfig.js';
 import { zoneById } from '../../config/zones.js';
 import { navGrids } from '../../nav/world.js';
@@ -12,6 +12,17 @@ import { useStore } from '../../state/useStore.js';
 
 /** Personalens positioner (läses av spelarens kollision och minikartan). */
 export const staffState = {};
+
+/**
+ * Döljer personalen några bildrutor medan kontaktskuggorna på golvet bakas –
+ * annars "fastnar" deras skugga som en mörk fläck där de råkade stå.
+ */
+const root = { current: null, hideFrames: 0 };
+if (import.meta.env.DEV) window.__staffRoot = root;
+export function hideStaffForBake(frames = 12) {
+  root.hideFrames = frames;
+  if (root.current) root.current.visible = false;
+}
 
 const SPEED = 0.85;
 
@@ -66,9 +77,15 @@ function StaffMember({ cfg, index }) {
   const model = useMemo(() => cloneSkinned(scene), [scene]);
   const group = useRef();
   const label = useRef();
-  const nameTex = useNameTexture(cfg.name);
+  const nameTex = useNameTexture(cfg.name ?? '');
   const mixer = useMemo(() => new THREE.AnimationMixer(model), [model]);
   const actions = useMemo(() => Object.fromEntries(animations.map((a) => [a.name, mixer.clipAction(a)])), [animations, mixer]);
+  // gångklippets egen hastighet (m/s, sparad i modellen) → stegtakt som matchar förflyttningen
+  const walkSpeed = useMemo(() => {
+    let v = 0;
+    scene.traverse((o) => { if (o.userData?.walkSpeed) v = o.userData.walkSpeed; });
+    return v;
+  }, [scene]);
   const st = useRef(null);
 
   useEffect(() => {
@@ -78,9 +95,12 @@ function StaffMember({ cfg, index }) {
         o.userData.staffId = cfg.id;
       }
     });
+    if (actions.Walk && walkSpeed) actions.Walk.timeScale = SPEED / walkSpeed;
+    // olika fas i viloklippet så att personalen inte rör sig i takt
     actions.Idle?.play();
+    if (actions.Idle) actions.Idle.time = index * 1.7;
     return () => mixer.stopAllAction();
-  }, [model, actions, mixer, cfg.id]);
+  }, [model, actions, mixer, cfg.id, walkSpeed, index]);
 
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.05);
@@ -104,7 +124,10 @@ function StaffMember({ cfg, index }) {
       const want = sameLevel && dist < 5 ? Math.atan2(dx, dz) : cfg.fixed.yaw;
       s.yaw += angleDiff(s.yaw, want) * Math.min(1, dt * 3);
       anim = talking ? 'Talk' : 'Idle';
-    } else if (talking || (sameLevel && dist < 2.6)) {
+    } else if (cfg.shopper && sameLevel && dist < 1.1) {
+      // kunder stannar bara upp om man går rakt mot dem
+      anim = 'Idle';
+    } else if (!cfg.shopper && (talking || (sameLevel && dist < 2.6))) {
       // stanna och vänd dig mot kunden
       s.yaw += angleDiff(s.yaw, Math.atan2(dx, dz)) * Math.min(1, dt * 4);
       anim = talking ? 'Talk' : 'Idle';
@@ -122,7 +145,7 @@ function StaffMember({ cfg, index }) {
         s.path.shift();
         if (!s.path.length) {
           s.path = null;
-          s.wait = 3 + Math.random() * 5;
+          s.wait = cfg.shopper ? 6 + Math.random() * 9 : 3 + Math.random() * 5;
         }
       } else {
         s.yaw += angleDiff(s.yaw, Math.atan2(tx, tz)) * Math.min(1, dt * 5);
@@ -138,18 +161,26 @@ function StaffMember({ cfg, index }) {
     }
     mixer.update(dt);
     group.current.position.set(s.x, cfg.level * FLOOR_H, s.z);
+    group.current.visible = true; // dold tills första positionen är satt (annars syns hen i origo)
     group.current.rotation.y = s.yaw;
     staffState[cfg.id] = { x: s.x, z: s.z, level: cfg.level };
     if (label.current) label.current.visible = sameLevel && dist < 9;
   });
 
+  if (cfg.shopper) {
+    return (
+      <group ref={group} visible={false}>
+        <primitive object={model} />
+      </group>
+    );
+  }
   const open = (e) => {
     if (e.delta > 6 || useStore.getState().pointerLocked) return;
     e.stopPropagation();
     useStore.getState().openChat(cfg.id);
   };
   return (
-    <group ref={group}>
+    <group ref={group} visible={false}>
       <primitive object={model} />
       {/* osynlig träffyta – lätt att klicka på personen */}
       <mesh position-y={0.9} onClick={open} userData={{ staffId: cfg.id, action: () => useStore.getState().openChat(cfg.id) }}
@@ -165,9 +196,23 @@ function StaffMember({ cfg, index }) {
 }
 
 export default function Staff() {
-  return STAFF.map((cfg, i) => (
-    <Suspense key={cfg.id} fallback={null}>
-      <StaffMember cfg={cfg} index={i} />
-    </Suspense>
-  ));
+  // modellerna (≈ 3 MB st) laddas först när besökaren kommer till våningen – eller åker rulltrappa dit
+  const [levels, setLevels] = useState(() => new Set([0]));
+  useFrame(() => {
+    const want = [player.level];
+    if (player.mode === 'ramp') want.push(player.level + 1, player.level - 1);
+    if (want.some((l) => l >= 0 && !levels.has(l))) setLevels(new Set([...levels, ...want.filter((l) => l >= 0)]));
+    if (!root.current) return;
+    if (root.hideFrames > 0) root.hideFrames--;
+    root.current.visible = root.hideFrames === 0;
+  });
+  return (
+    <group ref={(g) => { root.current = g; if (g && root.hideFrames) g.visible = false; }}>
+      {[...STAFF, ...SHOPPERS].map((cfg, i) => levels.has(cfg.level) && (
+        <Suspense key={cfg.id} fallback={null}>
+          <StaffMember cfg={cfg} index={i} />
+        </Suspense>
+      ))}
+    </group>
+  );
 }

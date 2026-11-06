@@ -166,6 +166,62 @@ function photo(id, wall, along, y, w, h, image) {
   return { id, type: 'photo', zone: null, x: p[0], z: p[1], rot: p[2], y, w, h, image, colliders: [] };
 }
 
+/**
+ * Dubbelsidig, låg hyllgondol mitt på golvet: tre hyllplan med vikta plagg på
+ * båda långsidorna och en exponeringsyta överst.
+ */
+function gondola(id, zone, x, z, rot = 0, opts = {}) {
+  const f = { id, type: 'gondola', zone, x, z, rot, w: 1.8, d: 0.72, h: 1.32, levels: [0.12, 0.52, 0.92], ...opts };
+  f.colliders = [{ rect: rectFor(f, f.w + 0.06, f.d + 0.06) }];
+  f.map = { rect: rectFor(f, f.w, f.d) };
+  f.slots = [];
+  const per = 3;
+  for (const side of [1, -1]) {
+    for (const y of f.levels) {
+      for (let i = 0; i < per; i++) {
+        const lx = -f.w / 2 + f.w * ((i + 0.5) / per);
+        const [wx, wz] = toWorld(f, lx, side * f.d * 0.25);
+        f.slots.push({ kind: 'fold', pos: [wx, y + 0.02, wz], rot: rot + (side < 0 ? Math.PI : 0), maxStack: 3 });
+      }
+    }
+  }
+  for (const lx of [-0.5, 0.5]) {
+    const [wx, wz] = toWorld(f, lx * f.w * 0.6, 0);
+    f.slots.push({ kind: 'accessory', pos: [wx, f.h, wz], rot });
+  }
+  return f;
+}
+
+/** Svävande väggylor i ek med väskor och skor. x/z = mitten längs väggen; rot pekar ut från väggen. */
+function wallShelves(id, zone, x, z, rot, opts = {}) {
+  const f = { id, type: 'wallShelves', zone, x, z, rot, length: 1.6, depth: 0.34, levels: [0.95, 1.4, 1.85], ...opts };
+  f.colliders = [{ rect: rectFor(f, f.length, f.depth + 0.06, 0, f.depth / 2) }];
+  f.map = { rect: rectFor(f, f.length, f.depth, 0, f.depth / 2) };
+  f.slots = [];
+  for (const y of f.levels) {
+    for (const lx of [-0.45, 0.45]) {
+      const [wx, wz] = toWorld(f, lx * f.length * 0.8, f.depth / 2 + 0.02);
+      f.slots.push({ kind: 'accessory', pos: [wx, y + 0.02, wz], rot });
+    }
+  }
+  return f;
+}
+
+/** Fristående affischställ (dubbelsidigt) med kampanjbild. */
+function posterStand(id, zone, x, z, rot, image) {
+  const f = { id, type: 'posterStand', zone, x, z, rot, image, w: 0.8, h: 1.75 };
+  f.colliders = [{ rect: rectFor(f, 0.86, 0.44) }];
+  f.map = { rect: rectFor(f, 0.8, 0.2) };
+  return f;
+}
+
+/** Stor bakbelyst kampanjbild (ljuslåda) på en vägg. along = läge längs väggen. */
+function lightbox(id, wall, along, y, w, h, image) {
+  const eps = 0.02;
+  const p = { back: [along, STORE.minZ + eps, 0], left: [STORE.minX + eps, along, FACE_X], right: [STORE.maxX - eps, along, FACE_NX] }[wall];
+  return { id, type: 'lightbox', zone: null, x: p[0], z: p[1], rot: p[2], y, w, h, image, colliders: [] };
+}
+
 /** Provhytternas insida (x0, z0, x1, z1) på entréplan – att kliva in öppnar provningen. */
 export const FITTING_BOOTHS = [
   { id: 'A', rect: [-6.9, STORE.minZ, -5.5, STORE.minZ + 1.45], stand: { x: -6.3, z: STORE.minZ + 0.85 } },
@@ -205,8 +261,13 @@ export const FIXTURES = [
   screen('scr-2', 'entrance', 2.6, 6.75, R0, { images: [1, 3, 0, 2] }),
   plant('plant-1', 'entrance', minX + 0.55, 6.9, 1.15),
   plant('plant-2', 'entrance', maxX - 0.55, 6.9, 1.15),
-  photo('ph-1', 'left', 5.2, 1.75, 1.3, 1.9, 2),
+  photo('ph-1', 'left', 5.8, 1.75, 1.1, 1.6, 2),
   photo('ph-2', 'right', 5.2, 1.75, 1.3, 1.9, 3),
+  wallShelves('ws-1', 'accessories', minX, 4.0, FACE_X),
+  gondola('gd-1', 'tops', -7.6, 4.3, R0),
+  gondola('gd-2', 'entrance', 7.2, 4.4, R0, { w: 1.6, pool: 'new' }),
+  posterStand('ps-1', 'entrance', -1.6, 3.6, R0, 0),
+  posterStand('ps-2', 'entrance', 1.6, 3.6, R0, 1),
 
   // --- Denim: hyllvägg till vänster, klädstång på bakväggen, bord och ställning
   shelf('sh-1', 'denim', minX, -5.5, FACE_X),
@@ -243,6 +304,12 @@ export const FIXTURES = [
   freeRail('fr-y1', 'outerwear', 5.4, -5.0, R0, { length: 2.0 }),
   photo('ph-4', 'back', 2.75, 2.62, 1.55, 1.03, 0),
   photo('ph-5', 'back', 5.45, 2.62, 1.55, 1.03, 1),
+  photo('ph-6', 'back', 0.05, 2.62, 1.0, 1.03, 5),
+  // stor ljuslåda bakom rulltrappan
+  lightbox('lb-1', 'back', 10.4, 2.05, 3.0, 2.2, 2),
+  // bildvägg ovanför denimstången
+  photo('ph-7', 'back', -11.0, 2.75, 1.2, 0.95, 6),
+  photo('ph-8', 'back', -8.7, 2.75, 1.2, 0.95, 7),
 
   // --- Kassa & provrum
   // två provhytter man kan gå in i (öppet draperi, spegel, pall) – se FITTING_BOOTHS
@@ -281,6 +348,14 @@ export const FIXTURES = [
     mannequin('u-mq-2', 'dresses', -5.05, -1.6, -0.35, ['full'], 0.12),
     podium('u-pod-k1', 'dresses', -2.4, 0.6),
     photo('u-ph-1', 'left', 5.6, 1.75, 1.3, 1.9, 2),
+    // bildrad ovanför klänningsväggen
+    photo('u-ph-3', 'back', -9.6, 2.85, 1.1, 0.8, 4),
+    photo('u-ph-4', 'back', -6.9, 2.85, 1.1, 0.8, 5),
+    photo('u-ph-5', 'back', -4.2, 2.85, 1.1, 0.8, 6),
+    photo('u-ph-6', 'back', -1.5, 2.85, 1.1, 0.8, 7),
+    gondola('u-gd-1', 'dresses', -8.8, 4.7, R0),
+    gondola('u-gd-2', 'party', -2.0, 3.9, R0, { pool: 'new' }),
+    posterStand('u-ps-1', 'dresses', 0.2, 2.9, R0, 2),
     plant('u-plant-1', 'dresses', minX + 0.55, 6.9, 1.15),
     plant('u-plant-2', 'dresses', -0.4, minZ + 0.5, 0.95),
 
@@ -300,6 +375,8 @@ export const FIXTURES = [
     // lodrät logotyp ovanför rulltrapporna, som i butikens referensbild
     { id: 'u-logo', type: 'wallLogo', zone: 'party', x: maxX - 0.012, z: -0.9, y: 1.85, rot: FACE_NX, width: 3.0, vertical: true, colliders: [] },
     photo('u-ph-2', 'right', 4.1, 1.75, 1.2, 1.7, 3),
+    lightbox('u-lb-1', 'back', 10.4, 1.95, 2.8, 2.1, 3),
+    photo('u-ph-7', 'back', 2.75, 2.85, 1.3, 0.8, 0),
     plant('u-plant-3', 'party', maxX - 0.55, 6.9, 1.15),
     plant('u-plant-4', 'party', 0.6, 6.9, 1.0),
   ]),
@@ -326,6 +403,12 @@ export const FIXTURES = [
     mannequin('t-mq-2', 'knit', -2.4, 5.5, 0, ['outer', 'lower'], 0.12),
     mannequin('t-mq-3', 'knit', -1.4, 5.5, -0.2, ['upper', 'skirt'], 0.12),
     photo('t-ph-1', 'left', 5.6, 1.75, 1.3, 1.9, 0),
+    photo('t-ph-3', 'back', -9.6, 2.85, 1.1, 0.8, 1),
+    photo('t-ph-4', 'back', -6.9, 2.85, 1.1, 0.8, 2),
+    photo('t-ph-5', 'back', -4.2, 2.85, 1.1, 0.8, 3),
+    photo('t-ph-6', 'back', -1.5, 2.85, 1.1, 0.8, 4),
+    gondola('t-gd-1', 'knit', -2.6, -4.6, R0),
+    posterStand('t-ps-1', 'knit', -0.2, 2.8, R0, 3),
     plant('t-plant-1', 'knit', minX + 0.55, 6.9, 1.15),
     plant('t-plant-2', 'knit', -0.4, minZ + 0.5, 0.95),
 
@@ -343,6 +426,9 @@ export const FIXTURES = [
     screen('t-scr-1', 'trousers', 5.2, 5.8, R0, { images: [1, 2, 3, 0] }),
     { id: 't-logo', type: 'wallLogo', zone: 'trousers', x: maxX - 0.012, z: 3.6, y: 2.4, rot: FACE_NX, width: 2.4, colliders: [] },
     photo('t-ph-2', 'right', 5.9, 1.75, 1.2, 1.7, 1),
+    gondola('t-gd-2', 'trousers', 1.2, 4.0, R0),
+    photo('t-ph-7', 'back', 2.75, 2.85, 1.2, 0.8, 5),
+    photo('t-ph-8', 'back', 9.5, 2.85, 1.2, 0.8, 6),
     plant('t-plant-3', 'trousers', maxX - 0.55, 6.9, 1.15),
     plant('t-plant-4', 'trousers', 0.6, 6.9, 1.0),
   ]),

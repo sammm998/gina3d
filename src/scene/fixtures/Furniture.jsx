@@ -111,3 +111,47 @@ export function CashDesk({ f }) {
     </group>
   );
 }
+
+/** Dubbelsidig hyllgondol: vit stomme, ekhyllor, svart sockel. */
+export function Gondola({ f }) {
+  const t = 0.028;
+  return (
+    <group position={[f.x, 0, f.z]} rotation-y={f.rot}>
+      <mesh position-y={0.05} material={MAT.blackMatte}>
+        <boxGeometry args={[f.w - 0.04, 0.1, f.d - 0.04]} />
+      </mesh>
+      {/* mittvägg i ek */}
+      <mesh position-y={f.h / 2} material={MAT.oak}>
+        <boxGeometry args={[f.w - t * 2, f.h, 0.03]} />
+      </mesh>
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[(s * (f.w - t)) / 2, f.h / 2, 0]} material={MAT.white}>
+          <boxGeometry args={[t, f.h, f.d]} />
+        </mesh>
+      ))}
+      {f.levels.map((y, i) => (
+        <mesh key={i} position-y={y} material={i === 0 ? MAT.white : MAT.oak}>
+          <boxGeometry args={[f.w - t * 2, 0.025, f.d]} />
+        </mesh>
+      ))}
+      <RoundedBox args={[f.w + 0.02, 0.04, f.d + 0.02]} radius={0.012} smoothness={2} position-y={f.h - 0.02} material={MAT.white} />
+    </group>
+  );
+}
+
+/** Svävande väggylor i ek med dolda konsoler. */
+export function WallShelves({ f }) {
+  return (
+    <group position={[f.x, 0, f.z]} rotation-y={f.rot}>
+      {/* ljus panel bakom hyllorna */}
+      <mesh position={[0, 1.42, 0.008]} material={MAT.cream}>
+        <boxGeometry args={[f.length + 0.2, 1.6, 0.016]} />
+      </mesh>
+      {f.levels.map((y) => (
+        <mesh key={y} position={[0, y, f.depth / 2 + 0.016]} material={MAT.oak}>
+          <boxGeometry args={[f.length, 0.04, f.depth]} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
