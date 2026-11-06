@@ -445,6 +445,13 @@ export default function TryOn() {
           </div>
         )}
 
+        {fromCart && cartTryables.length === 0 && (
+          <p className="panel__note panel__note--warn">
+            {cart.length
+              ? 'Plaggen i din kundkorg har ingen provbild ännu. Välj ett plagg nedan att prova.'
+              : 'Din kundkorg är tom. Välj plagg nedan att prova, eller lägg plagg i kundkorgen i butiken.'}
+          </p>
+        )}
         {cartTryables.length > 0 && (
           <div className="panel__group">
             <p className="panel__label">Från din kundkorg</p>

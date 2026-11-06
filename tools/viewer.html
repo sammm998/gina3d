@@ -1,0 +1,25 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Modellvisare</title><style>body{margin:0;background:#eee}</style></head>
+<body><script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+// Testvisare: ?m=staff-ali&clip=Walk&t=0.27 – renderar modellen från tre vinklar.
+const q = new URLSearchParams(location.search);
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+r.setSize(1200, 600); document.body.appendChild(r.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#e9e7e3');
+scene.add(new THREE.HemisphereLight('#fff', '#bbb', 2.2)); const d = new THREE.DirectionalLight('#fff', 1.5); d.position.set(2, 4, 3); scene.add(d);
+const g = await new GLTFLoader().loadAsync(`/assets/models/${q.get('m') || 'staff-ali'}.glb`);
+const mixer = new THREE.AnimationMixer(g.scene);
+const clip = g.animations.find((a) => a.name === (q.get('clip') || 'Walk'));
+mixer.clipAction(clip).play(); mixer.setTime(Number(q.get('t') || 0.27));
+const views = [[3, 1.1, 0], [2.2, 1.2, 2.2], [0, 1.1, 3]];
+r.setScissorTest(true);
+views.forEach(([x, y, z], i) => {
+  const c = g.scene.clone(true);
+  const cam = new THREE.PerspectiveCamera(30, 400 / 600, 0.1, 50); cam.position.set(x, y, z); cam.lookAt(0, 0.9, 0);
+  r.setViewport(i * 400, 0, 400, 600); r.setScissor(i * 400, 0, 400, 600);
+  scene.add(g.scene); r.render(scene, cam);
+});
+window.__done = true;
+</script></body></html>

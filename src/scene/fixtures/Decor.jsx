@@ -192,8 +192,10 @@ const curtainGeom = (() => {
 
 export function FittingRooms({ f }) {
   const booth = f.w / 2;
+  const label = useMemo(() => textTexture('PROVRUM', { weight: 500, size: 90, color: '#1a1a1a', letterSpacing: 10 }), []);
   return (
     <group position={[f.x, 0, f.z]}>
+      {/* väggar mellan och runt hytterna */}
       {[-1, 0, 1].map((i) => (
         <mesh key={i} position={[i * booth, 1.25, f.d / 2]} material={MAT.white}>
           <boxGeometry args={[0.06, 2.5, f.d]} />
@@ -202,12 +204,33 @@ export function FittingRooms({ f }) {
       <mesh position={[0, 2.38, f.d]} material={MAT.white}>
         <boxGeometry args={[f.w + 0.06, 0.24, 0.06]} />
       </mesh>
+      <mesh position={[0, 2.38, f.d + 0.032]} raycast={() => null}>
+        <planeGeometry args={[0.9, 0.9 / (label.userData.aspect || 4)]} />
+        <meshBasicMaterial map={label} transparent toneMapped={false} />
+      </mesh>
       {[-0.5, 0.5].map((i) => (
-        <group key={i}>
-          <mesh position={[i * booth, 1.2, f.d - 0.05]} geometry={curtainGeom} material={MAT.curtain} />
-          <mesh position={[i * booth, 2.27, f.d - 0.05]} rotation-z={Math.PI / 2} material={MAT.black}>
+        <group key={i} position-x={i * booth}>
+          {/* draperiet är draget åt sidan – man kan gå in */}
+          <mesh position={[-booth / 2 + 0.2, 1.2, f.d - 0.05]} scale={[0.32, 1, 1]} geometry={curtainGeom} material={MAT.curtain} />
+          <mesh position={[0, 2.27, f.d - 0.05]} rotation-z={Math.PI / 2} material={MAT.black}>
             <cylinderGeometry args={[0.008, 0.008, booth - 0.08, 6]} />
           </mesh>
+          {/* helfigursspegel på bakväggen */}
+          <mesh position={[0, 1.15, 0.035]} material={MAT.black}>
+            <boxGeometry args={[0.66, 1.8, 0.03]} />
+          </mesh>
+          <mesh position={[0, 1.15, 0.052]} material={MAT.mirror}>
+            <planeGeometry args={[0.6, 1.74]} />
+          </mesh>
+          {/* pall och krokar */}
+          <mesh position={[0.48, 0.22, 0.3]} material={MAT.cream}>
+            <cylinderGeometry args={[0.17, 0.17, 0.44, 24]} />
+          </mesh>
+          {[-0.25, 0.25].map((x) => (
+            <mesh key={x} position={[x, 1.75, 0.06]} rotation-x={Math.PI / 2} material={MAT.black}>
+              <cylinderGeometry args={[0.008, 0.008, 0.08, 6]} />
+            </mesh>
+          ))}
         </group>
       ))}
     </group>

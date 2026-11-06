@@ -166,6 +166,12 @@ function photo(id, wall, along, y, w, h, image) {
   return { id, type: 'photo', zone: null, x: p[0], z: p[1], rot: p[2], y, w, h, image, colliders: [] };
 }
 
+/** Provhytternas insida (x0, z0, x1, z1) på entréplan – att kliva in öppnar provningen. */
+export const FITTING_BOOTHS = [
+  { id: 'A', rect: [-6.9, STORE.minZ, -5.5, STORE.minZ + 1.45], stand: { x: -6.3, z: STORE.minZ + 0.85 } },
+  { id: 'B', rect: [-5.5, STORE.minZ, -4.1, STORE.minZ + 1.45], stand: { x: -4.9, z: STORE.minZ + 0.85 } },
+];
+
 /**
  * Flyttar möbler till en annan våning: produktplatserna lyfts med våningshöjden
  * (möblerna själva ritas med y-förskjutning i fixtures/index.jsx).
@@ -239,7 +245,18 @@ export const FIXTURES = [
   photo('ph-5', 'back', 5.45, 2.62, 1.55, 1.03, 1),
 
   // --- Kassa & provrum
-  { id: 'fitting', type: 'fittingRooms', zone: 'checkout', x: -5.5, z: minZ, rot: 0, w: 2.8, d: 1.3, colliders: [{ rect: [-6.95, minZ, -4.05, minZ + 1.32] }], map: { rect: [-6.9, minZ, -4.1, minZ + 1.3] } },
+  // två provhytter man kan gå in i (öppet draperi, spegel, pall) – se FITTING_BOOTHS
+  {
+    id: 'fitting', type: 'fittingRooms', zone: 'checkout', x: -5.5, z: minZ, rot: 0, w: 2.8, d: 1.6,
+    colliders: [
+      { rect: [-6.99, minZ, -6.9, minZ + 1.62] },
+      { rect: [-5.54, minZ, -5.46, minZ + 1.62] },
+      { rect: [-4.1, minZ, -4.01, minZ + 1.62] },
+      { circle: [-5.72, minZ + 0.3, 0.18] }, // pallar
+      { circle: [-4.32, minZ + 0.3, 0.18] },
+    ],
+    map: { rect: [-6.9, minZ, -4.1, minZ + 1.6] },
+  },
   { id: 'mirror', type: 'tryOnMirror', zone: 'checkout', x: -3.35, z: minZ + 0.02, rot: 0, colliders: [{ rect: [-3.9, minZ, -2.8, minZ + 0.2] }] },
   { id: 'cash', type: 'cashDesk', zone: 'checkout', x: -1.5, z: minZ + 1.45, rot: 0, w: 2.2, d: 0.7, colliders: [{ rect: [-2.65, minZ + 1.05, -0.35, minZ + 1.85] }], map: { rect: [-2.6, minZ + 1.1, -0.4, minZ + 1.8] } },
   { id: 'wall-logo', type: 'wallLogo', zone: 'checkout', x: -1.5, z: minZ + 0.012, y: 2.55, rot: 0, width: 2.2, colliders: [] },

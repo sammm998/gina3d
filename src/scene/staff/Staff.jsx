@@ -86,9 +86,9 @@ function StaffMember({ cfg, index }) {
     const dt = Math.min(rawDt, 0.05);
     if (!navGrids[cfg.level]) return;
     if (!st.current) {
-      // startposition: en slumpad fri punkt i första zonen
-      const p = randomTarget(cfg, { x: 0, z: 0 });
-      const start = p?.at(-1) ?? { x: 0, z: 2 };
+      // startposition: fast plats (kassan) eller en slumpad fri punkt i zonen
+      const p = cfg.fixed ? null : randomTarget(cfg, { x: 0, z: 0 });
+      const start = cfg.fixed ?? p?.at(-1) ?? { x: 0, z: 2 };
       st.current = { x: start.x, z: start.z, yaw: index, path: null, wait: 1 + index, anim: 'Idle' };
       staffState[cfg.id] = { x: start.x, z: start.z, level: cfg.level };
     }
@@ -99,7 +99,12 @@ function StaffMember({ cfg, index }) {
     const dx = player.x - s.x, dz = player.z - s.z;
     const dist = Math.hypot(dx, dz);
     let anim = 'Idle';
-    if (talking || (sameLevel && dist < 2.6)) {
+    if (cfg.fixed) {
+      // kassapersonalen står kvar bakom disken och tittar mot kunden när hen är nära
+      const want = sameLevel && dist < 5 ? Math.atan2(dx, dz) : cfg.fixed.yaw;
+      s.yaw += angleDiff(s.yaw, want) * Math.min(1, dt * 3);
+      anim = talking ? 'Talk' : 'Idle';
+    } else if (talking || (sameLevel && dist < 2.6)) {
       // stanna och vänd dig mot kunden
       s.yaw += angleDiff(s.yaw, Math.atan2(dx, dz)) * Math.min(1, dt * 4);
       anim = talking ? 'Talk' : 'Idle';

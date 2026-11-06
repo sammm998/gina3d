@@ -14,6 +14,12 @@ export const STAFF = [
     greeting: 'Hej, Ali här! Behöver du hjälp att hitta en jacka, en väska eller rätt storlek?',
   },
   {
+    // står alltid i kassan på plan 1
+    id: 'maja', name: 'Maja', model: '/assets/models/staff-maja.glb', level: 0, zones: ['checkout'],
+    fixed: { x: -1.5, z: -6.85, yaw: 0 },
+    greeting: 'Hej och välkommen till kassan! Jag hjälper dig gärna med kundkorgen, provrummet bredvid eller frågor om storlekar och returer.',
+  },
+  {
     id: 'sara', name: 'Sara', model: '/assets/models/staff-sara.glb', level: 1, zones: ['dresses', 'party'],
     greeting: 'Hej, jag är Sara! Ska du på fest eller söker du en vardagsklänning? Jag hjälper gärna till.',
   },

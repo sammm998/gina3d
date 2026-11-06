@@ -129,7 +129,16 @@ function buildPerson(cfg) {
   for (const s of [1, -1]) {
     const L = side(s);
     const hip = P(0.09 * s, 0.93, 0), knee = P(0.09 * s, 0.5, 0.01), ankle = P(0.09 * s, 0.085, 0);
-    add(limb(hip, knee, fem ? 0.082 : 0.088, fem ? 0.056 : 0.062), mats.bottom, blendY(`Thigh.${L}`, `Shin.${L}`, knee.y, 0.035));
+    // Låret börjar inne i bäckenet och viktas mjukt mellan höft och lår, så att
+    // benet böjer sig i höftleden i stället för att svänga ut ur kroppen.
+    const thighTop = P(0.088 * s, 0.97, 0);
+    add(limb(thighTop, knee, fem ? 0.078 : 0.084, fem ? 0.056 : 0.062), mats.bottom, (x, y) => {
+      if (y > knee.y + 0.08 * S) {
+        const t = THREE.MathUtils.clamp((0.97 * S - y) / (0.14 * S), 0, 1);
+        return ['Hips', `Thigh.${L}`, t];
+      }
+      return blendY(`Thigh.${L}`, `Shin.${L}`, knee.y, 0.035)(x, y);
+    });
     add(sphere(fem ? 0.058 : 0.063, knee.x, knee.y, knee.z), mats.bottom, `Shin.${L}`);
     add(limb(knee, ankle, fem ? 0.054 : 0.06, fem ? 0.04 : 0.045), mats.bottom, `Shin.${L}`);
     const shoe = new THREE.CapsuleGeometry(0.045, 0.16, 6, 14);
@@ -139,19 +148,26 @@ function buildPerson(cfg) {
     add(shoe, mats.shoe, `Foot.${L}`);
   }
   // --- bäcken/byxlinning
-  add(lathe([[0.001, 0.86 * S], [0.13, 0.86 * S], [fem ? 0.165 : 0.155, 0.92 * S], [fem ? 0.165 : 0.157, 0.99 * S], [fem ? 0.148 : 0.152, 1.05 * S], [0.001, 1.06 * S]], 0.74), mats.bottom, blendY('Hips', 'Spine', 1.04 * S, 0.03));
+  add(lathe([[0.001, 0.86 * S], [0.13, 0.86 * S], [fem ? 0.165 : 0.155, 0.92 * S], [fem ? 0.165 : 0.157, 0.99 * S], [fem ? 0.148 : 0.152, 1.05 * S], [0.001, 1.06 * S]], 0.74), mats.bottom, (x, y) => {
+    // byxans nedre del följer med låren en bit (mjuk övergång vid grenen/höften)
+    if (y < 0.95 * S) return ['Hips', `Thigh.${side(x)}`, THREE.MathUtils.clamp((0.95 * S - y) / (0.09 * S), 0, 1) * 0.65];
+    return blendY('Hips', 'Spine', 1.04 * S, 0.03)(x, y);
+  });
   // --- överkropp (topp/tröja)
   const torso = fem
     ? [[0.001, 1.0], [0.15, 1.0], [0.142, 1.08], [0.128, 1.16], [0.127, 1.22], [0.148, 1.3], [0.152, 1.35], [0.15, 1.4], [0.14, 1.45], [0.1, 1.49], [0.055, 1.5], [0.001, 1.5]]
     : [[0.001, 1.0], [0.152, 1.0], [0.15, 1.08], [0.148, 1.16], [0.155, 1.25], [0.168, 1.33], [0.172, 1.39], [0.165, 1.45], [0.12, 1.49], [0.06, 1.51], [0.001, 1.51]];
   add(lathe(torso.map(([r, y]) => [r, y * S]), fem ? 0.68 : 0.7), mats.top, blendY('Spine', 'Chest', 1.24 * S, 0.06));
   // axlar
-  for (const s of [1, -1]) add(sphere(fem ? 0.058 : 0.068, 0.16 * s, 1.425 * S, 0, 1.1, 0.95, 0.9), mats.top, `UpperArm.${side(s)}`);
+  for (const s of [1, -1]) add(sphere(fem ? 0.058 : 0.068, 0.16 * s, 1.425 * S, 0, 1.1, 0.95, 0.9), mats.top, () => ['Chest', `UpperArm.${side(s)}`, 0.55]);
   // --- armar (långärmat), händer
   for (const s of [1, -1]) {
     const L = side(s);
     const sh = P(0.185 * s, 1.43, 0), el = P(0.205 * s, 1.15, -0.01), wr = P(0.215 * s, 0.91, 0.01);
-    add(limb(sh, el, fem ? 0.045 : 0.052, fem ? 0.038 : 0.045), mats.top, blendY(`UpperArm.${L}`, `ForeArm.${L}`, el.y, 0.03));
+    add(limb(sh, el, fem ? 0.045 : 0.052, fem ? 0.038 : 0.045), mats.top, (x, y) => {
+      if (y > 1.33 * S) return ['Chest', `UpperArm.${L}`, THREE.MathUtils.clamp((1.45 * S - y) / (0.12 * S), 0.35, 1)];
+      return blendY(`UpperArm.${L}`, `ForeArm.${L}`, el.y, 0.03)(x, y);
+    });
     add(sphere(fem ? 0.038 : 0.044, el.x, el.y, el.z), mats.top, `ForeArm.${L}`);
     add(limb(el, wr, fem ? 0.036 : 0.042, fem ? 0.03 : 0.034), mats.top, `ForeArm.${L}`);
     const hand = new THREE.CapsuleGeometry(fem ? 0.026 : 0.03, 0.06, 4, 10);
@@ -239,8 +255,8 @@ function walkClip(S, armRest) {
   const ph = times.map((t) => (t / T) * Math.PI * 2);
   const tracks = [];
   for (const [L, off] of [['L', 0], ['R', Math.PI]]) {
-    tracks.push(rotTrack(`Thigh.${L}`, times, ph.map((p) => qx(-deg(24) * Math.sin(p + off)))));
-    tracks.push(rotTrack(`Shin.${L}`, times, ph.map((p) => qx(deg(8) + deg(30) * Math.max(0, Math.sin(p + off + 1.2))))));
+    tracks.push(rotTrack(`Thigh.${L}`, times, ph.map((p) => qx(-deg(19) * Math.sin(p + off)))));
+    tracks.push(rotTrack(`Shin.${L}`, times, ph.map((p) => qx(deg(6) + deg(26) * Math.max(0, Math.sin(p + off + 1.2))))));
     tracks.push(rotTrack(`Foot.${L}`, times, ph.map((p) => qx(deg(10) * Math.sin(p + off - 0.6)))));
     const s = L === 'L' ? 1 : -1;
     tracks.push(rotTrack(`UpperArm.${L}`, times, ph.map((p) => qe(deg(20) * Math.sin(p + off), 0, s * armRest))));
@@ -292,6 +308,7 @@ export const STAFF = [
   { name: 'staff-emma', displayName: 'Emma', body: 'f', height: 1.69, skin: '#e8c3a6', hair: '#3b2a20', hairStyle: 'long', eyes: '#4a3526', lips: '#b9706a', top: '#151515', bottom: '#151515', shoes: '#0d0d0d' },
   { name: 'staff-sara', displayName: 'Sara', body: 'f', height: 1.65, skin: '#8d5a3b', hair: '#1b1411', hairStyle: 'bun', eyes: '#2b1d14', lips: '#7a4038', top: '#efe8dc', bottom: '#151515', shoes: '#efe8dc' },
   { name: 'staff-ali', displayName: 'Ali', body: 'm', height: 1.8, skin: '#c99a76', hair: '#1c1612', hairStyle: 'short', eyes: '#2e2218', lips: '#a0675c', top: '#151515', bottom: '#2b2b2b', shoes: '#111111' },
+  { name: 'staff-maja', displayName: 'Maja', body: 'f', height: 1.67, skin: '#d9a985', hair: '#5a3524', hairStyle: 'ponytail', eyes: '#3b2a1e', lips: '#a8645c', top: '#efe8dc', bottom: '#151515', shoes: '#151515' },
   { name: 'staff-linnea', displayName: 'Linnéa', body: 'f', height: 1.72, skin: '#f0d2bd', hair: '#c9a46a', hairStyle: 'ponytail', eyes: '#3d5a73', lips: '#c27d78', top: '#151515', bottom: '#efe8dc', shoes: '#151515' },
 ];
 

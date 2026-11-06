@@ -6,6 +6,7 @@ import Minimap from './Minimap.jsx';
 import Joystick from './Joystick.jsx';
 import Tooltip from './Tooltip.jsx';
 import { STAFF } from '../config/staff.js';
+import { FITTING_BOOTHS } from '../config/fixtures.js';
 import { staffState } from '../scene/staff/Staff.jsx';
 import { player } from '../nav/playerState.js';
 import { startTour, stopTour, useTourController } from './Tour.js';
@@ -61,9 +62,29 @@ export default function Hud() {
   const setCartOpen = useStore((s) => s.setCartOpen);
   const arrived = useStore((s) => s.arrivedNavId);
   const fittingNavId = useStore((s) => s.fittingNavId);
+  // Kliver man in i en provhytt öppnas provningen med kundkorgens plagg
+  // (en gång per besök i hytten).
+  useEffect(() => {
+    let raf;
+    let inside = null;
+    const tick = () => {
+      raf = requestAnimationFrame(tick);
+      const s = useStore.getState();
+      const booth = player.level === 0 && player.mode === 'floor'
+        ? FITTING_BOOTHS.find(({ rect: [x0, z0, x1, z1] }) => player.x > x0 && player.x < x1 && player.z > z0 && player.z < z1)
+        : null;
+      if (booth && booth.id !== inside && !s.tryOn.open) {
+        s.openTryOn(null, true);
+        if (s.fittingNavId) useStore.setState({ fittingNavId: 0 });
+      }
+      inside = booth?.id ?? null;
+    };
+    tick();
+    return () => cancelAnimationFrame(raf);
+  }, []);
   // framme i provrummet → öppna provningen med kundkorgens plagg
   useEffect(() => {
-    if (fittingNavId && arrived === fittingNavId) {
+    if (fittingNavId && arrived === fittingNavId && !useStore.getState().tryOn.open) {
       useStore.setState({ fittingNavId: 0 });
       useStore.getState().openTryOn(null, true);
     }

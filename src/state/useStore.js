@@ -102,7 +102,8 @@ export const useStore = create((set, get) => ({
   /** Nav-id för en promenad till provrummet; provningen öppnas vid ankomst. */
   fittingNavId: 0,
   goToFittingRoom: () => {
-    const id = get().navigateTo(-3.35, -6.35, [-3.35, -7.5], 0);
+    // in i första provhytten, vänd mot spegeln
+    const id = get().navigateTo(-6.3, -6.65, [-6.3, -7.5], 0);
     set({ fittingNavId: id, cartOpen: false, selectedId: null });
   },
 
