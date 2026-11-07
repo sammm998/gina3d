@@ -304,12 +304,8 @@ export const FIXTURES = [
   freeRail('fr-y1', 'outerwear', 5.4, -5.0, R0, { length: 2.0 }),
   photo('ph-4', 'back', 2.75, 2.62, 1.55, 1.03, 0),
   photo('ph-5', 'back', 5.45, 2.62, 1.55, 1.03, 1),
-  photo('ph-6', 'back', 0.05, 2.62, 1.0, 1.03, 5),
   // stor ljuslåda bakom rulltrappan
   lightbox('lb-1', 'back', 10.4, 2.05, 3.0, 2.2, 2),
-  // bildvägg ovanför denimstången
-  photo('ph-7', 'back', -11.0, 2.75, 1.2, 0.95, 6),
-  photo('ph-8', 'back', -8.7, 2.75, 1.2, 0.95, 7),
 
   // --- Kassa & provrum
   // två provhytter man kan gå in i (öppet draperi, spegel, pall) – se FITTING_BOOTHS
@@ -348,10 +344,8 @@ export const FIXTURES = [
     mannequin('u-mq-2', 'dresses', -5.05, -1.6, -0.35, ['full'], 0.12),
     podium('u-pod-k1', 'dresses', -2.4, 0.6),
     photo('u-ph-1', 'left', 5.6, 1.75, 1.3, 1.9, 2),
-    // bildrad ovanför klänningsväggen
-    photo('u-ph-3', 'back', -9.6, 2.85, 1.1, 0.8, 4),
+    // två tavlor ovanför klänningsväggen
     photo('u-ph-4', 'back', -6.9, 2.85, 1.1, 0.8, 5),
-    photo('u-ph-5', 'back', -4.2, 2.85, 1.1, 0.8, 6),
     photo('u-ph-6', 'back', -1.5, 2.85, 1.1, 0.8, 7),
     gondola('u-gd-1', 'dresses', -8.8, 4.7, R0),
     gondola('u-gd-2', 'party', -2.0, 3.9, R0, { pool: 'new' }),
@@ -376,7 +370,6 @@ export const FIXTURES = [
     { id: 'u-logo', type: 'wallLogo', zone: 'party', x: maxX - 0.012, z: -0.9, y: 1.85, rot: FACE_NX, width: 3.0, vertical: true, colliders: [] },
     photo('u-ph-2', 'right', 4.1, 1.75, 1.2, 1.7, 3),
     lightbox('u-lb-1', 'back', 10.4, 1.95, 2.8, 2.1, 3),
-    photo('u-ph-7', 'back', 2.75, 2.85, 1.3, 0.8, 0),
     plant('u-plant-3', 'party', maxX - 0.55, 6.9, 1.15),
     plant('u-plant-4', 'party', 0.6, 6.9, 1.0),
   ]),
@@ -403,9 +396,7 @@ export const FIXTURES = [
     mannequin('t-mq-2', 'knit', -2.4, 5.5, 0, ['outer', 'lower'], 0.12),
     mannequin('t-mq-3', 'knit', -1.4, 5.5, -0.2, ['upper', 'skirt'], 0.12),
     photo('t-ph-1', 'left', 5.6, 1.75, 1.3, 1.9, 0),
-    photo('t-ph-3', 'back', -9.6, 2.85, 1.1, 0.8, 1),
     photo('t-ph-4', 'back', -6.9, 2.85, 1.1, 0.8, 2),
-    photo('t-ph-5', 'back', -4.2, 2.85, 1.1, 0.8, 3),
     photo('t-ph-6', 'back', -1.5, 2.85, 1.1, 0.8, 4),
     gondola('t-gd-1', 'knit', -2.6, -4.6, R0),
     posterStand('t-ps-1', 'knit', -0.2, 2.8, R0, 3),
@@ -427,8 +418,6 @@ export const FIXTURES = [
     { id: 't-logo', type: 'wallLogo', zone: 'trousers', x: maxX - 0.012, z: 3.6, y: 2.4, rot: FACE_NX, width: 2.4, colliders: [] },
     photo('t-ph-2', 'right', 5.9, 1.75, 1.2, 1.7, 1),
     gondola('t-gd-2', 'trousers', 1.2, 4.0, R0),
-    photo('t-ph-7', 'back', 2.75, 2.85, 1.2, 0.8, 5),
-    photo('t-ph-8', 'back', 9.5, 2.85, 1.2, 0.8, 6),
     plant('t-plant-3', 'trousers', maxX - 0.55, 6.9, 1.15),
     plant('t-plant-4', 'trousers', 0.6, 6.9, 1.0),
   ]),

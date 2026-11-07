@@ -157,19 +157,29 @@ export function useCoverTexture(tex, aspect) {
   }, [tex, aspect]);
 }
 
-/** Inramat modefoto på väggen (svart ram, vit passepartout). */
+/**
+ * Största bildyta med bildens egna proportioner inom maxW × maxH – hela bilden
+ * syns, inget beskärs eller sträcks.
+ */
+function containSize(tex, maxW, maxH) {
+  const a = tex?.image ? (tex.image.width || 1) / (tex.image.height || 1) : maxW / maxH;
+  return a > maxW / maxH ? [maxW, maxW / a] : [maxH * a, maxH];
+}
+
+/** Inramat modefoto på väggen (svart ram, vit passepartout). Ramen följer bildens format. */
 export function FramedPhoto({ f }) {
   const url = PATHS.photos[f.image % PATHS.photos.length];
   const border = 0.035, mat = 0.07;
-  const iw = f.w - (border + mat) * 2, ih = f.h - (border + mat) * 2;
-  const tex = useCoverTexture(useLazyTexture(url, [f.x, f.y, f.z], 20), iw / ih);
+  const tex = useLazyTexture(url, [f.x, f.y, f.z], 20);
+  const [iw, ih] = containSize(tex, f.w - (border + mat) * 2, f.h - (border + mat) * 2);
+  const fw = iw + (border + mat) * 2, fh = ih + (border + mat) * 2;
   return (
     <group position={[f.x, f.y, f.z]} rotation-y={f.rot}>
       <mesh position-z={0.015} material={MAT.black}>
-        <boxGeometry args={[f.w, f.h, 0.03]} />
+        <boxGeometry args={[fw, fh, 0.03]} />
       </mesh>
       <mesh position-z={0.036} material={MAT.white}>
-        <planeGeometry args={[f.w - border * 2, f.h - border * 2]} />
+        <planeGeometry args={[fw - border * 2, fh - border * 2]} />
       </mesh>
       <mesh position-z={0.044}>
         <planeGeometry args={[iw, ih]} />
@@ -183,14 +193,15 @@ export function FramedPhoto({ f }) {
 export function Lightbox({ f }) {
   const url = PATHS.campaign[f.image % PATHS.campaign.length];
   const frame = 0.05;
-  const tex = useCoverTexture(useLazyTexture(url, [f.x, f.y, f.z], 26), (f.w - frame * 2) / (f.h - frame * 2));
+  const tex = useLazyTexture(url, [f.x, f.y, f.z], 26);
+  const [iw, ih] = containSize(tex, f.w - frame * 2, f.h - frame * 2);
   return (
     <group position={[f.x, f.y, f.z]} rotation-y={f.rot}>
       <mesh position-z={0.045} material={MAT.chrome}>
-        <boxGeometry args={[f.w, f.h, 0.09]} />
+        <boxGeometry args={[iw + frame * 2, ih + frame * 2, 0.09]} />
       </mesh>
       <mesh position-z={0.098} raycast={() => null}>
-        <planeGeometry args={[f.w - frame * 2, f.h - frame * 2]} />
+        <planeGeometry args={[iw, ih]} />
         <meshBasicMaterial key={tex ? 'tex' : 'none'} map={tex} color={tex ? '#f4f1ec' : '#e9e4dc'} toneMapped={false} />
       </mesh>
     </group>
@@ -201,7 +212,8 @@ export function Lightbox({ f }) {
 export function PosterStand({ f }) {
   const url = PATHS.photos[f.image % PATHS.photos.length];
   const pw = f.w - 0.06, ph = f.h - 0.5;
-  const tex = useCoverTexture(useLazyTexture(url, [f.x, 1.2, f.z], 18), pw / ph);
+  const tex = useLazyTexture(url, [f.x, 1.2, f.z], 18);
+  const [iw, ih] = containSize(tex, pw - 0.04, ph - 0.04);
   const y0 = 0.38;
   return (
     <group position={[f.x, 0, f.z]} rotation-y={f.rot}>
@@ -221,10 +233,16 @@ export function PosterStand({ f }) {
         <boxGeometry args={[f.w, 0.022, 0.022]} />
       </mesh>
       {[1, -1].map((s) => (
-        <mesh key={s} position={[0, y0 + ph / 2 + 0.03, s * 0.006]} rotation-y={s < 0 ? Math.PI : 0}>
-          <planeGeometry args={[pw, ph]} />
-          <meshStandardMaterial key={tex ? 'tex' : 'none'} map={tex} color={tex ? '#ffffff' : '#ddd6cc'} roughness={0.3} />
-        </mesh>
+        <group key={s} position={[0, y0 + ph / 2 + 0.03, s * 0.006]} rotation-y={s < 0 ? Math.PI : 0}>
+          {/* vit affischkartong, bilden i sitt eget format ovanpå */}
+          <mesh material={MAT.white}>
+            <planeGeometry args={[pw, ph]} />
+          </mesh>
+          <mesh position-z={0.004}>
+            <planeGeometry args={[iw, ih]} />
+            <meshStandardMaterial key={tex ? 'tex' : 'none'} map={tex} color={tex ? '#ffffff' : '#ddd6cc'} roughness={0.3} />
+          </mesh>
+        </group>
       ))}
     </group>
   );

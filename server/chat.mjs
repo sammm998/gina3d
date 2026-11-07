@@ -36,57 +36,126 @@ export function initChat(dir) {
   };
   store = read('products.json');
   catalog = read('catalog.json');
-  console.log(`Chatt: ${store.length} produkter i butiken, ${catalog.length} i sortimentet, ${process.env.ANTHROPIC_API_KEY ? 'Claude' : 'enkel sökning (ingen ANTHROPIC_API_KEY)'}`);
+  console.log(`Chatt: ${store.length} produkter i butiken, ${catalog.length} i sortimentet, ${process.env.ANTHROPIC_API_KEY ? 'Claude' : process.env.OPENAI_API_KEY ? `OpenAI (${OPENAI_MODEL})` : 'enkel sökning (ingen AI-nyckel)'}`);
 }
 
 const norm = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '');
 const tokens = (s) => norm(s).split(/[^a-z0-9]+/).filter((t) => t.length > 1);
 
-/** Svenska sökord -> kategori/engelska termer i produktnamnen. */
-const SYNONYMS = {
-  klanning: ['dress', 'dresses'], klanningar: ['dress', 'dresses'], kjol: ['skirt', 'skirts'], byxor: ['trousers', 'pants'],
-  jeans: ['jeans', 'denim'], topp: ['top', 'tops'], toppar: ['top', 'tops'], trojor: ['knit', 'sweater', 'knitwear'], troja: ['sweater', 'knit'],
-  stickat: ['knit', 'knitted'], kofta: ['cardigan'], jacka: ['jacket'], kappa: ['coat'], ytterklader: ['coat', 'jacket', 'outerwear'],
-  vaska: ['bag', 'bags'], vaskor: ['bag', 'bags'], skor: ['shoes', 'sandals', 'heels', 'boots', 'sneakers'], blus: ['blouse'], skjorta: ['shirt'],
-  svart: ['black'], vit: ['white'], beige: ['beige'], bla: ['blue'], rod: ['red'], gron: ['green'], rosa: ['pink'], gra: ['grey'], brun: ['brown'],
-  fest: ['party', 'sequin', 'satin'], basic: ['basic'], kostym: ['tailored', 'suit'], linne: ['tank', 'singlet'],
+// ------------------------------------------------------------------ sökning
+// Frågan tolkas: plaggtyp (kategori) är ett krav, undertyp (t.ex. linne, kofta)
+// och färg rankas. Stavfel som "byxir" tolereras. Vanliga ord ("jag vill ha")
+// räknas inte, och ord matchas som hela ord – inte som delar av andra ord.
+
+/** Ord i frågan -> kategori. */
+const CATEGORY_WORDS = {
+  trousers: ['byxa', 'byxor', 'brallor', 'pants', 'trousers', 'kostymbyxor', 'chinos', 'leggings', 'shorts', 'joggers', 'mjukisbyxor'],
+  jeans: ['jeans', 'denim', 'jeansen'],
+  tops: ['topp', 'toppar', 'toppen', 'linne', 'linnen', 'linnet', 't-shirt', 'tshirt', 't-shirts', 'tisha', 'blus', 'blusar', 'blusen', 'skjorta', 'skjortor', 'body', 'top', 'tops', 'tank', 'crop'],
+  knitwear: ['troja', 'trojor', 'trojan', 'stickat', 'stickad', 'stickade', 'kofta', 'koftor', 'cardigan', 'sweatshirt', 'hoodie', 'luvtroja', 'pullover', 'jumper', 'sweater', 'polo'],
+  dresses: ['klanning', 'klanningar', 'klanningen', 'dress', 'dresses', 'jumpsuit', 'festklanning', 'maxiklanning'],
+  skirts: ['kjol', 'kjolar', 'kjolen', 'skirt', 'minikjol', 'midikjol'],
+  outerwear: ['jacka', 'jackor', 'jackan', 'kappa', 'kappor', 'rock', 'blazer', 'blazers', 'kavaj', 'coat', 'jacket', 'trench', 'trenchcoat', 'puffer', 'dunjacka', 'vast', 'ytterklader'],
+  bags: ['vaska', 'vaskor', 'bag', 'bags', 'handvaska', 'shopper', 'planbok', 'axelremsvaska'],
+  shoes: ['sko', 'skor', 'sandal', 'sandaler', 'stovlar', 'stovel', 'boots', 'sneakers', 'klackar', 'klackskor', 'pumps', 'loafers', 'heels', 'ballerina', 'ballerinaskor'],
 };
+const WORD_CAT = Object.fromEntries(Object.entries(CATEGORY_WORDS).flatMap(([c, ws]) => ws.map((w) => [w, c])));
 
-function expand(q) {
-  const out = new Set();
-  for (const t of tokens(q)) {
-    out.add(t);
-    for (const s of SYNONYMS[t] ?? []) out.add(s);
-  }
-  return [...out];
-}
+/** Undertyper och egenskaper -> engelska ord i produktnamnen (rankas högre). */
+const NAME_WORDS = {
+  linne: ['tank', 'singlet', 'cami', 'strap', 'vest', 'linne'], linnen: ['tank', 'singlet', 'cami', 'strap', 'vest'], linnet: ['tank', 'singlet', 'cami'],
+  tshirt: ['tee', 't-shirt', 'tshirt'], 't-shirt': ['tee', 't-shirt', 'tshirt'], tisha: ['tee', 't-shirt'],
+  blus: ['blouse'], blusar: ['blouse'], skjorta: ['shirt'], skjortor: ['shirt'], body: ['body'], crop: ['crop', 'cropped'],
+  kofta: ['cardigan'], koftor: ['cardigan'], hoodie: ['hoodie', 'hood'], luvtroja: ['hoodie', 'hood'], sweatshirt: ['sweatshirt', 'sweat'],
+  stickat: ['knit', 'knitted'], stickad: ['knit', 'knitted'], polo: ['polo'],
+  jumpsuit: ['jumpsuit'], maxiklanning: ['maxi'], festklanning: ['party', 'sequin', 'satin'],
+  shorts: ['shorts'], leggings: ['leggings'], chinos: ['chino'], kostymbyxor: ['tailored', 'suit'], joggers: ['jogger', 'sweatpants'], mjukisbyxor: ['sweatpants', 'jogger'],
+  minikjol: ['mini'], midikjol: ['midi'],
+  blazer: ['blazer'], kavaj: ['blazer'], kappa: ['coat'], rock: ['coat'], jacka: ['jacket'], trench: ['trench'], dunjacka: ['puffer', 'down'], puffer: ['puffer'], vast: ['vest', 'gilet'],
+  sandal: ['sandal', 'sandals'], sandaler: ['sandal', 'sandals'], stovlar: ['boot', 'boots'], boots: ['boot', 'boots'], sneakers: ['sneaker', 'sneakers'], klackar: ['heel', 'heels'], pumps: ['pumps', 'heel'], loafers: ['loafer', 'loafers'], ballerina: ['ballerina', 'ballet'],
+  shopper: ['shopper', 'tote'], planbok: ['wallet'],
+  vida: ['wide'], vid: ['wide'], raka: ['straight'], rak: ['straight'], smala: ['slim', 'skinny'], hogmidjade: ['high', 'waist'], lag: ['low'],
+  lang: ['long', 'maxi'], langa: ['long', 'maxi'], kort: ['short', 'mini', 'cropped'], korta: ['short', 'mini', 'cropped'], midi: ['midi'], maxi: ['maxi'], mini: ['mini'],
+  fest: ['party', 'sequin', 'satin', 'glitter'], satin: ['satin'], spets: ['lace'], ribbad: ['rib', 'ribbed'], oversize: ['oversized', 'oversize'],
+  svart: ['black'], svarta: ['black'], vit: ['white'], vita: ['white'], beige: ['beige'], bla: ['blue'], blaa: ['blue'], rod: ['red'], roda: ['red'],
+  gron: ['green'], grona: ['green'], rosa: ['pink'], gra: ['grey', 'gray'], graa: ['grey', 'gray'], brun: ['brown'], bruna: ['brown'], kram: ['cream', 'offwhite'],
+};
+/** Undertyper som är egna plaggtyper (filtrerar strikt). Övriga ord (färg, längd, fest …) rankar bara. */
+const TYPE_WORDS = new Set(['linne', 'linnen', 'linnet', 'tshirt', 't-shirt', 'tisha', 'blus', 'blusar', 'skjorta', 'skjortor', 'body', 'kofta', 'koftor', 'hoodie', 'luvtroja',
+  'sweatshirt', 'polo', 'jumpsuit', 'shorts', 'leggings', 'chinos', 'joggers', 'mjukisbyxor', 'blazer', 'kavaj', 'kappa', 'rock', 'jacka', 'trench', 'dunjacka', 'puffer', 'vast',
+  'sandal', 'sandaler', 'stovlar', 'boots', 'sneakers', 'klackar', 'pumps', 'loafers', 'ballerina', 'shopper', 'planbok']);
+const STOP = new Set(('jag vill ha har ni du dig en ett nagra nagot nagon visa mig soker letar efter finns det som med och i pa for till garna kan hitta skulle vilka vad ar hej tack '
+  + 'snalla please gillar behover kopa ska vara lite mer typ eller utan fran om den det de dom era er min mina mitt was any some show me find looking for want need hello hi').split(' '));
 
-function scoreText(text, terms) {
-  const t = norm(text);
-  return terms.reduce((a, term) => a + (t.includes(term) ? (term.length > 3 ? 2 : 1) : 0), 0);
-}
-
-export function searchProducts({ query = '', category = 'any', max_price = 0, only_in_store = false, limit = 8 }) {
-  const terms = expand(query);
-  const results = [];
-  for (const p of store) {
-    if (category !== 'any' && p.category !== category) continue;
-    if (max_price > 0 && p.price > max_price) continue;
-    const s = scoreText(`${p.name} ${p.category} ${(p.colors || []).join(' ')} ${p.material || ''}`, terms) + 1.5;
-    if (terms.length && s <= 1.5) continue;
-    results.push({ s, item: { id: p.id, name: p.name, category: p.category, price: p.price, currency: p.currency, colors: p.colors, in_store: true, url: p.productUrl } });
-  }
-  if (!only_in_store) {
-    for (const c of catalog) {
-      if (category !== 'any' && c.category !== category) continue;
-      const s = scoreText(`${c.name} ${c.path}`, terms);
-      if (!s) continue;
-      results.push({ s, item: { id: c.id, name: c.name, category: c.category, in_store: false, url: c.url } });
+function editDistance(a, b) {
+  if (Math.abs(a.length - b.length) > 2) return 9;
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
     }
   }
-  results.sort((a, b) => b.s - a.s);
+  return d[a.length][b.length];
+}
+
+/** Rättar stavfel mot kända ord (byxir -> byxor, trjor -> trojor). */
+const KNOWN = [...new Set([...Object.keys(WORD_CAT), ...Object.keys(NAME_WORDS)])];
+function correct(t) {
+  if (WORD_CAT[t] || NAME_WORDS[t] || t.length < 4) return t;
+  let best = t, bd = t.length >= 7 ? 2 : 1;
+  for (const k of KNOWN) {
+    const dd = editDistance(t, k);
+    if (dd < bd || (dd === bd && best === t && dd <= (t.length >= 7 ? 2 : 1))) { best = k; bd = dd; }
+  }
+  return best;
+}
+
+const words = (s) => norm(s).replace(/t-shirt/g, 'tshirt').split(/[^a-z0-9]+/).filter(Boolean);
+
+/** Tolkar en fråga: { categories, nameTerms, freeTerms }. */
+export function parseQuery(q) {
+  const cats = new Set(), nameTerms = new Set(), typeTerms = new Set(), free = [];
+  for (const raw of words(q)) {
+    if (STOP.has(raw) || raw.length < 2) continue;
+    const t = correct(raw);
+    if (WORD_CAT[t]) cats.add(WORD_CAT[t]);
+    for (const n of NAME_WORDS[t] ?? []) (TYPE_WORDS.has(t) ? typeTerms : nameTerms).add(n);
+    if (!WORD_CAT[t] && !NAME_WORDS[t]) free.push(t);
+  }
+  return { categories: [...cats], typeTerms: [...typeTerms], nameTerms: [...nameTerms], freeTerms: free };
+}
+
+const hasWord = (nameWords, term) => nameWords.some((w) => w === term || (term.length >= 4 && w.startsWith(term)));
+
+export function searchProducts({ query = '', category = 'any', max_price = 0, only_in_store = false, limit = 8 }) {
+  const q = parseQuery(query);
+  const cats = category && category !== 'any' ? [category] : q.categories;
+  const pool = [
+    ...store.map((p) => ({ in_store: true, id: p.id, name: p.name, category: p.category, price: p.price, currency: p.currency, colors: p.colors, url: p.productUrl, text: `${p.name} ${(p.colors || []).join(' ')} ${p.material || ''}` })),
+    ...(only_in_store ? [] : catalog.map((c) => ({ in_store: false, id: c.id, name: c.name, category: c.category, url: c.url, text: `${c.name} ${c.path || ''}` }))),
+  ];
+  const scored = [];
+  for (const it of pool) {
+    if (cats.length && !cats.includes(it.category)) continue;
+    if (max_price > 0 && it.in_store && it.price > max_price) continue;
+    const ws = words(it.text);
+    const typeHit = q.typeTerms.some((t) => hasWord(ws, t));
+    const nameHits = q.nameTerms.filter((t) => hasWord(ws, t)).length;
+    const freeHits = q.freeTerms.filter((t) => hasWord(ws, t)).length;
+    // utan kategori i frågan krävs att något ord faktiskt matchar
+    if (!cats.length && !typeHit && !nameHits && !freeHits) continue;
+    scored.push({ it, typeHit, s: (typeHit ? 5 : 0) + nameHits * 3 + freeHits * 2 + (it.in_store ? 0.5 : 0) });
+  }
+  // Frågar man efter en plaggtyp (linne, kofta, blazer …) visas bara den – om den finns
+  const filtered = q.typeTerms.length && scored.some((x) => x.typeHit) ? scored.filter((x) => x.typeHit) : scored;
+  filtered.sort((a, b) => b.s - a.s);
   const seen = new Set();
-  return results.filter((r) => !seen.has(r.item.url) && seen.add(r.item.url)).slice(0, limit).map((r) => r.item);
+  return filtered
+    .filter((x) => !seen.has(x.it.url) && seen.add(x.it.url))
+    .slice(0, limit)
+    .map(({ it }) => ({ id: it.id, name: it.name, category: it.category, in_store: it.in_store, url: it.url, ...(it.in_store ? { price: it.price, currency: it.currency, colors: it.colors } : {}) }));
 }
 
 // ------------------------------------------------------------------ produktdetaljer (live)
@@ -175,6 +244,7 @@ Rulltrapporna ligger längs högerväggen.
 
 Så här hjälper du kunden:
 - Svara på svenska, vänligt, kort och konkret, som en kunnig säljare i butik.
+- Visa exakt den plaggtyp kunden frågar efter: frågar kunden om byxor visar du bara byxor, om linnen bara linnen. Sätt category i search_products (byxor = trousers, jeans = jeans, linne/topp/blus/skjorta/t-shirt = tops, tröja/stickat/kofta/hoodie = knitwear, klänning = dresses, kjol = skirts, jacka/kappa/blazer = outerwear, väska = bags, skor = shoes) och sök på plaggets engelska namn (t.ex. "tank top", "wide trousers").
 - Hitta plagg med verktygen. Hitta aldrig på produkter, priser, färger eller storlekar – uppgifter om ett plagg ska komma från verktygen.
 - När du föreslår plagg, visa dem med show_products (högst 4). Tala om ifall plagget finns här i butiken (in_store) och på vilken våning, eller att det finns i webbutiken.
 - Kunden kan lägga plagg från butiken i kundkorgen och prova dem virtuellt i provrummet (plan 1, vid kassan) med webbkamera eller egen bild – berätta gärna det när det passar.
@@ -256,17 +326,65 @@ async function claudeChat(staff, history) {
   return { reply: 'Jag behöver lite mer tid på mig – kan du formulera frågan lite kortare?', cards, history: messages };
 }
 
+// ------------------------------------------------------------------ OpenAI
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
+
+/**
+ * Samma personal och verktyg via OpenAI (OPENAI_API_KEY). Historiken som
+ * skickas tillbaka till webbläsaren innehåller bara text (frågor och svar).
+ */
+async function openaiChat(staff, history) {
+  const cards = [];
+  const tools = TOOLS.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema, strict: true } }));
+  const textHistory = history
+    .map((m) => ({ role: m.role, content: typeof m.content === 'string' ? m.content : (Array.isArray(m.content) ? m.content.filter((b) => b?.type === 'text').map((b) => b.text).join('\n') : '') }))
+    .filter((m) => m.content);
+  const messages = [{ role: 'system', content: systemPrompt(staff) }, ...textHistory];
+  for (let turn = 0; turn < 6; turn++) {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: OPENAI_MODEL, messages, tools, temperature: 0.4, max_tokens: 900 }),
+      signal: AbortSignal.timeout(45000),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error(json?.error?.message || `OpenAI ${res.status}`), { status: res.status, openai: true });
+    const msg = json.choices?.[0]?.message;
+    if (!msg) throw new Error('Tomt svar från OpenAI');
+    messages.push(msg);
+    if (!msg.tool_calls?.length) {
+      const reply = (msg.content || '').trim() || 'Hur kan jag hjälpa dig?';
+      return { reply, cards, history: [...textHistory, { role: 'assistant', content: reply }] };
+    }
+    for (const call of msg.tool_calls) {
+      let out;
+      try {
+        const input = JSON.parse(call.function.arguments || '{}');
+        out = validInput(call.function.name, input) ? await runTool(call.function.name, input, cards) : { error: 'INVALID_INPUT' };
+      } catch (e) {
+        out = { error: String(e.message || e) };
+      }
+      messages.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(out).slice(0, 12000) });
+    }
+  }
+  return { reply: 'Jag behöver lite mer tid på mig – kan du formulera frågan lite kortare?', cards, history: textHistory };
+}
+
 /** Utan API-nyckel: enkel sökning och några produktkort. */
+const CAT_SV = { trousers: 'byxor', jeans: 'jeans', tops: 'toppar', knitwear: 'tröjor och stickat', dresses: 'klänningar', skirts: 'kjolar', outerwear: 'ytterkläder', bags: 'väskor', shoes: 'skor' };
+
 async function simpleChat(text) {
-  const hits = searchProducts({ query: text, limit: 4 });
+  const hits = searchProducts({ query: text, limit: 6 });
   if (!hits.length) {
     return {
-      reply: 'Jag hittade inget som matchar. Prova med plaggtyp och färg, t.ex. ”svart klänning” eller ”vida jeans”. (Personalchatten svarar med enkel sökning eftersom ingen AI-nyckel är inlagd.)',
+      reply: 'Jag hittade inget som matchar. Prova med plaggtyp och färg, t.ex. ”svart klänning” eller ”vida jeans”. ',
       cards: [],
     };
   }
   const cards = (await Promise.all(hits.map((h) => productDetails(h.id).catch(() => null)))).map(cardFor).filter(Boolean);
-  return { reply: `Här är några förslag som matchar ”${text}”:`, cards };
+  const q = parseQuery(text);
+  const what = q.categories.length ? q.categories.map((c) => CAT_SV[c] ?? c).join(' och ') : `”${text}”`;
+  return { reply: `Här är ${what} jag hittade åt dig:`, cards };
 }
 
 // ------------------------------------------------------------------ HTTP
@@ -309,6 +427,17 @@ export async function handleChat(req, res) {
   if (!text) return send(400, { error: 'Tomt meddelande' });
   if (!dataDir) initChat(path.resolve('data'));
   try {
+    if (!process.env.ANTHROPIC_API_KEY && process.env.OPENAI_API_KEY) {
+      const history = [...sanitizeHistory(data.history), { role: 'user', content: text }];
+      try {
+        const out = await openaiChat(String(data.staff || '').slice(0, 40), history);
+        return send(200, { ...out, mode: 'ai' });
+      } catch (e) {
+        // AI-tjänsten svarar inte (fel nyckel, slut på krediter …) – svara med sökningen i stället
+        console.error('OpenAI:', e.message);
+        return send(200, { ...(await simpleChat(text)), mode: 'search' });
+      }
+    }
     if (process.env.ANTHROPIC_API_KEY) {
       const history = [...sanitizeHistory(data.history), { role: 'user', content: text }];
       const out = await claudeChat(String(data.staff || '').slice(0, 40), history);

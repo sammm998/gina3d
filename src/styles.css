@@ -349,3 +349,14 @@ a.btn { text-decoration: none; }
 .catalog__more { text-align: center; padding: 10px 0 60px; color: var(--muted); }
 .catalog__error { text-align: center; color: #a3261b; }
 .catalog .panel--cart { position: fixed; }
+
+/* ---------- personal erbjuder hjälp */
+.help-offer {
+  position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 40;
+  width: min(440px, calc(100vw - 32px)); background: var(--white); border: 1px solid var(--black);
+  padding: 16px 18px; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.14); animation: help-in 0.35s ease-out;
+}
+.help-offer__who { margin: 0 0 4px; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.help-offer__text { margin: 0 0 12px; font-size: 15px; line-height: 1.45; }
+.help-offer__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+@keyframes help-in { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }

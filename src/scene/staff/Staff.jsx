@@ -14,6 +14,15 @@ import { useStore } from '../../state/useStore.js';
 export const staffState = {};
 
 /**
+ * Be en medarbetare gå fram till besökaren och erbjuda hjälp.
+ * onArrive anropas när hen är framme (eller efter max 25 s).
+ */
+export const staffCall = { id: null, onArrive: null, until: 0 };
+export function callStaff(id, onArrive) {
+  Object.assign(staffCall, { id, onArrive, until: performance.now() + 25000 });
+}
+
+/**
  * Döljer personalen några bildrutor medan kontaktskuggorna på golvet bakas –
  * annars "fastnar" deras skugga som en mörk fläck där de råkade stå.
  */
@@ -119,6 +128,20 @@ function StaffMember({ cfg, index }) {
     const dx = player.x - s.x, dz = player.z - s.z;
     const dist = Math.hypot(dx, dz);
     let anim = 'Idle';
+    // kallad till kunden: gå fram (ny väg varje sekund) tills hen är nära
+    if (staffCall.id === cfg.id) {
+      if ((sameLevel && dist < 2.6) || performance.now() > staffCall.until || !sameLevel) {
+        const cb = staffCall.onArrive;
+        staffCall.id = null;
+        if (sameLevel) cb?.(cfg.id);
+      } else if ((s.repath = (s.repath ?? 0) - dt) <= 0) {
+        s.repath = 1;
+        const k = 1.3 / (dist || 1);
+        const target = { x: player.x - dx * k, z: player.z - dz * k };
+        const path = navGrids[cfg.level].findPath({ x: s.x, z: s.z }, target);
+        if (path?.length) { s.path = path; s.wait = 0; }
+      }
+    }
     if (cfg.fixed) {
       // kassapersonalen står kvar bakom disken och tittar mot kunden när hen är nära
       const want = sameLevel && dist < 5 ? Math.atan2(dx, dz) : cfg.fixed.yaw;

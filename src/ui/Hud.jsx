@@ -7,7 +7,7 @@ import Joystick from './Joystick.jsx';
 import Tooltip from './Tooltip.jsx';
 import { STAFF } from '../config/staff.js';
 import { FITTING_BOOTHS } from '../config/fixtures.js';
-import { staffState } from '../scene/staff/Staff.jsx';
+import { callStaff, staffState } from '../scene/staff/Staff.jsx';
 import { player } from '../nav/playerState.js';
 import { startTour, stopTour, useTourController } from './Tour.js';
 import { musicPreference, saveMusicPreference, startMusic, stopMusic } from '../audio/music.js';
@@ -45,8 +45,65 @@ function Toast() {
   return <div className={`toast ${visible ? 'is-visible' : ''}`} role="status">{toast?.text}</div>;
 }
 
+const FIRST_OFFER_MS = 30_000;
+const OFFER_EVERY_MS = 180_000;
+
+/**
+ * Efter 30 sekunder, och sedan var tredje minut, går närmaste medarbetare på
+ * våningen fram och frågar om besökaren behöver hjälp.
+ */
+function useHelpOffers() {
+  useEffect(() => {
+    let next = performance.now() + FIRST_OFFER_MS;
+    const id = setInterval(() => {
+      const st = useStore.getState();
+      if (performance.now() < next) return;
+      // inte mitt i en chatt, provning, kassa, tur eller rulltrappsåkning – försök igen om 20 s
+      const busy = st.chat.open || st.tryOn.open || st.cartOpen || st.selectedId || st.tour.active || st.helpOffer || player.mode !== 'floor';
+      if (busy) { next = performance.now() + 20_000; return; }
+      let best = null, bestD = Infinity;
+      for (const s of STAFF) {
+        const p = staffState[s.id];
+        if (!p || p.level !== player.level || s.fixed) continue;
+        const d = Math.hypot(p.x - player.x, p.z - player.z);
+        if (d < bestD) { bestD = d; best = s; }
+      }
+      best ??= STAFF.find((s) => s.level === player.level);
+      if (!best) return;
+      next = performance.now() + OFFER_EVERY_MS;
+      callStaff(best.id, (sid) => useStore.getState().offerHelp(sid));
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+}
+
+/** Pratbubbla: medarbetaren erbjuder hjälp. */
+function HelpOffer() {
+  const offer = useStore((s) => s.helpOffer);
+  const dismiss = useStore((s) => s.dismissHelp);
+  const openChat = useStore((s) => s.openChat);
+  useEffect(() => {
+    if (!offer) return;
+    const t = setTimeout(dismiss, 20_000);
+    return () => clearTimeout(t);
+  }, [offer, dismiss]);
+  if (!offer) return null;
+  const staff = STAFF.find((s) => s.id === offer.staffId);
+  return (
+    <div className="help-offer" role="dialog" aria-label={`${staff?.name} erbjuder hjälp`}>
+      <p className="help-offer__who">{staff?.name} · Personal</p>
+      <p className="help-offer__text">{offer.text}</p>
+      <div className="help-offer__actions">
+        <button className="btn btn--primary" onClick={() => { dismiss(); openChat(offer.staffId); }}>Ja, gärna</button>
+        <button className="btn" onClick={dismiss}>Nej tack, jag tittar bara</button>
+      </div>
+    </div>
+  );
+}
+
 export default function Hud() {
   useTourController();
+  useHelpOffers();
   // bakgrundsmusik: på som standard (startar efter klicket in i butiken), valet sparas
   const [music, setMusic] = useState(musicPreference);
   useEffect(() => {
@@ -147,6 +204,7 @@ export default function Hud() {
       </header>
 
       <CheckoutBanner />
+      <HelpOffer />
       {mapOpen && <Minimap onNavigate={() => window.innerWidth < 700 && setMapOpen(false)} />}
 
       {locked && (

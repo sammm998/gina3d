@@ -150,6 +150,14 @@ export const useStore = create((set, get) => ({
     if (document.pointerLockElement) document.exitPointerLock();
   },
   closeChat: () => set({ chat: { ...get().chat, open: false } }),
+  // personal som kommer fram och erbjuder hjälp (se Hud: HelpOffer)
+  helpOffer: null, // { staffId, text }
+  offerHelp: (staffId) => {
+    const staff = STAFF.find((s) => s.id === staffId);
+    if (!staff) return;
+    set({ helpOffer: { staffId, text: `Hej! Jag heter ${staff.name}. Behöver du hjälp med något – plagg, storlekar eller att hitta rätt?` } });
+  },
+  dismissHelp: () => set({ helpOffer: null }),
   sendChat: async (text) => {
     const c = get().chat;
     if (c.pending || !text.trim()) return;

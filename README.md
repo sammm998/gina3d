@@ -116,7 +116,8 @@ miljövariabler på tjänsten:
 | `GT_IMPORT_PLAN` | `tops:8,knitwear:7,trousers:7,jeans:8,dresses:8,skirts:4,outerwear:7,bags:4,shoes:4` | antal produkter per kategori (minst 50 totalt) |
 | `GT_DEBUG` | `1` | skriver ut bildanalysen i byggloggen |
 | `PORT` | `8080` | serverns port |
-| `ANTHROPIC_API_KEY` | – | aktiverar AI-personalen i chatten |
+| `ANTHROPIC_API_KEY` | – | aktiverar AI-personalen i chatten (Claude) |
+| `OPENAI_API_KEY` | – | alternativ: AI-personalen via OpenAI (används om ingen Anthropic-nyckel finns). Modell: `OPENAI_MODEL` (standard `gpt-4.1-mini`) |
 | `STRIPE_SECRET_KEY` | – | aktiverar kortbetalning i kundkorgen (Stripe Checkout). Börja med `sk_test_…` |
 | `GT_CRAWL` | `1` | `0` stänger av serverns bakgrundscrawl av produktsidor (pris, bild, storlekar) |
 
@@ -342,7 +343,9 @@ Chatten (`server/chat.mjs`, `POST /api/chat`):
   storlekar, material och bild live från produktsidan på ginatricot.com, och visa produktkort.
   Från ett kort kan du gå till plagget i butiken, lägga det i korgen eller öppna det på
   ginatricot.com.
-- **Utan nyckel** svarar chatten med en enkel sökning i samma katalog, och gränssnittet säger det.
+- **Med `OPENAI_API_KEY`** (och ingen Anthropic-nyckel) används OpenAI med samma verktyg.
+- **Utan nyckel**, eller om AI-tjänsten inte svarar, tolkar chatten frågan själv: plaggtyp (byxor, linne, kofta …, även med stavfel), färg och egenskaper, och visar bara den plaggtyp man frågar efter.
+- Efter 30 sekunder, och sedan var tredje minut, går närmaste medarbetare fram och frågar om du behöver hjälp.
 - Sortimentet läses från sajtens sitemap vid varje bygge (`data/catalog.json`, cirka 10 000
   produkter); detaljerna hämtas live och cachas en timme. Chatten är märkt som AI-assistent.
 

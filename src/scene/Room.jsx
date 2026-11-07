@@ -156,8 +156,46 @@ function Ceilings() {
             <mesh key={i} geometry={g} material={MAT.ceiling} position-y={level * FLOOR_H + H} />
           ))}
           <Spots y={level * FLOOR_H + H} points={spotsFor(level, level === NL - 1 ? 2 : 1)} />
+          <CeilingDetails level={level} y={level * FLOOR_H + H} />
           {ceilingHoleOf(level).map((V, i) => (
             <SlabEdges key={i} V={V} y={level * FLOOR_H} />
+          ))}
+        </group>
+      ))}
+    </group>
+  );
+}
+
+/** Sprinklerhuvuden och ventilationsdon i taket – små detaljer som finns i alla butiker. */
+const sprinklerGeom = new THREE.CylinderGeometry(0.018, 0.026, 0.035, 10);
+const ventGeom = new THREE.BoxGeometry(0.6, 0.012, 0.6);
+const ventMat = new THREE.MeshStandardMaterial({ color: '#e6e5e1', roughness: 0.7 });
+const slotMat = new THREE.MeshStandardMaterial({ color: '#b9b8b4', roughness: 0.9 });
+const slotGeom = new THREE.BoxGeometry(0.5, 0.004, 0.018);
+function CeilingDetails({ level, y }) {
+  const holes = ceilingHoleOf(level);
+  const inHole = (x, z, m = 0.5) => holes.some((V) => x > V.minX - m && x < V.maxX + m && z > V.minZ - m && z < V.maxZ + m);
+  const sprinklers = useMemo(() => {
+    const out = [];
+    for (let x = -11; x <= 11; x += 3.2) for (let z = -6.2; z <= 6.4; z += 3.1) if (!inHole(x, z)) out.push([x + 0.6, z + 0.4]);
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [level]);
+  const vents = useMemo(() => [[-8.2, -3.6], [-1.6, 2.8], [4.2, -3.4], [-5.0, 5.2], [7.6, 5.4]].filter(([x, z]) => !inHole(x, z, 0.8)), [level]); // eslint-disable-line react-hooks/exhaustive-deps
+  const sref = useRef();
+  useLayoutEffect(() => {
+    const m = new THREE.Matrix4();
+    sprinklers.forEach(([x, z], i) => sref.current.setMatrixAt(i, m.makeTranslation(x, y - 0.0175, z)));
+    sref.current.instanceMatrix.needsUpdate = true;
+  }, [sprinklers, y]);
+  return (
+    <group>
+      <instancedMesh ref={sref} args={[sprinklerGeom, MAT.chrome, sprinklers.length]} raycast={() => null} />
+      {vents.map(([x, z]) => (
+        <group key={`${x}${z}`} position={[x, y - 0.007, z]}>
+          <mesh geometry={ventGeom} material={ventMat} raycast={() => null} />
+          {[-0.2, -0.1, 0, 0.1, 0.2].map((dz) => (
+            <mesh key={dz} geometry={slotGeom} material={slotMat} position={[0, -0.007, dz]} raycast={() => null} />
           ))}
         </group>
       ))}
