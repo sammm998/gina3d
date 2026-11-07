@@ -6,6 +6,7 @@ import Mannequin from './Mannequin.jsx';
 import ModelOrFallback from '../ModelOrFallback.jsx';
 import { FLOOR_H, MODELS } from '../../config/storeConfig.js';
 import Escalator from './Escalator.jsx';
+import { MissYTheme } from './MissY.jsx';
 import { Bar, BarBack, BarStool, Backdrop, Bench, CoffeeTable, LoungeRug, Runway, Showcase, Sofa, Stage, WallPanels } from './Lounge.jsx';
 
 /**
@@ -43,6 +44,7 @@ export const FIXTURE_COMPONENTS = {
   coffeeTable: CoffeeTable,
   showcase: Showcase,
   loungeRug: LoungeRug,
+  missyTheme: MissYTheme,
   wallPanels: WallPanels,
 };
 

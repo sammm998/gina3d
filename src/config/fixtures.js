@@ -404,7 +404,8 @@ const LAYOUT = [
     // Miss Y (ginatricot.com/se/miss-y)
     wallBay('t-wb-k3', 'missy', -4.2, minZ, R0),
     wallBay('t-wb-k4', 'missy', -1.5, minZ, R0),
-    { id: 't-missy-text', type: 'wallText', zone: 'missy', text: 'miss y', x: -2.85, z: minZ + 0.012, y: 3.05, rot: R0, height: 0.5, colliders: [] },
+    // rosa Miss Y-tema: vägg, neonskylt, matta, puffar och underklädesbord
+    { id: 't-missy', type: 'missyTheme', zone: 'missy', x: -2.85, z: -3.6, rot: R0, w: 7.6, colliders: [{ rect: [-3.7, -3.45, -2.0, -2.55] }, { circle: [-4.25, -2.1, 0.4] }, { circle: [-1.45, -2.1, 0.4] }] },
     table('t-tb-k1', 'knit', -8.8, -1.4, FACE_X, { w: 1.8 }),
     table('t-tb-k2', 'knit', -5.2, 3.4, R0, { w: 1.7 }),
     podium('t-pod-k1', 'knit', -5.4, -1.2),
@@ -512,6 +513,8 @@ function fillOut(existing) {
   for (const L of [0, 1, 2]) {
     const own = [...existing, ...out].filter((f) => (f.level || 0) === L);
     const rects = [];
+    // Miss Y-mattan och loungen hålls fria
+    for (const f of own) if (f.type === 'missyTheme') rects.push([f.x - 2.6, f.z - 1.8, f.x + 2.6, f.z + 3.0]);
     for (const f of own) for (const c of f.colliders || []) {
       if (c.rect) rects.push(c.rect);
       if (c.circle) rects.push([c.circle[0] - c.circle[2], c.circle[1] - c.circle[2], c.circle[0] + c.circle[2], c.circle[1] + c.circle[2]]);
