@@ -310,6 +310,13 @@ sidohängda plagg får tyg och färg utsnittade ur fotot.
   klänning, och justerar varje plagg för sig. **Prova direkt här** öppnar provningen på plats.
 - Köpet görs på ginatricot.com: korgen länkar till varje produktsida.
 
+## Gina Lounge (plan 4)
+
+Översta våningen nås med en tredje rulltrappa. Där finns en catwalk där fem modeller (tre blonda,
+två brunetter; Rocketbox, `assets/models/model-*.glb`) går i tur och ordning, poserar och vänder.
+Runt catwalken står publikbänkar i sammet, och våningen har en bar med marmorskiva, loungesoffor,
+en glasmonter med skyltdockor i säsongens plagg, mörk matta och valnötspaneler. Alva står i baren.
+
 ## Katalog och betalning
 
 - **/katalog** visar hela sortimentet från ginatricot.com (ca 8 400 produkter från sitemapen) med

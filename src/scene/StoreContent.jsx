@@ -6,6 +6,7 @@ import Products from './products/Products.jsx';
 import { placeProducts } from './products/placement.js';
 import { productEvents } from './products/events.js';
 import Staff from './staff/Staff.jsx';
+import RunwayShow from './staff/RunwayShow.jsx';
 
 /** Inredning + produkter placerade automatiskt utifrån products.json. */
 export default function StoreContent() {
@@ -24,6 +25,7 @@ export default function StoreContent() {
       <Fixtures outfits={placed.outfits} eventsFor={productEvents} />
       {products.length > 0 && <Products placed={placed} />}
       <Staff />
+      <RunwayShow />
     </group>
   );
 }

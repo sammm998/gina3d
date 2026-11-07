@@ -37,6 +37,13 @@ export const STAFF = [
   },
 ];
 
+// Gina Lounge (plan 4): värdinnan står vid baren
+STAFF.push({
+  id: 'alva', voice: 'shimmer', name: 'Alva', model: '/assets/models/staff-alva.glb', level: 3, zones: ['lounge'],
+  fixed: { x: -14.2, z: 1.2, yaw: Math.PI / 2 },
+  greeting: 'Välkommen till Gina Lounge! Catwalken visar säsongens favoriter – fråga mig om något plagg du ser, så hjälper jag dig.',
+});
+
 /** Kunder som strosar runt och tittar på kläderna (går inte att chatta med). */
 export const SHOPPERS = [
   { id: 'kund-1', shopper: true, model: '/assets/models/shopper-1.glb', level: 0, zones: ['entrance', 'tops', 'accessories', 'denim'] },

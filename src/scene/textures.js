@@ -286,3 +286,37 @@ export function productSwatch(url, crop = [0.38, 0.32, 0.24, 0.2]) {
     })
   );
 }
+
+/** Vit carrara-marmor med grå ådring (procedurell). */
+export function marbleTexture() {
+  return cached('marble', () => {
+    const size = 1024;
+    const c = canvas(size, size);
+    const g = c.getContext('2d');
+    g.fillStyle = '#f1efeb';
+    g.fillRect(0, 0, size, size);
+    let seed = 11;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (let v = 0; v < 22; v++) {
+      let x = rnd() * size, y = rnd() * size;
+      const ang = -0.6 + rnd() * 0.5;
+      g.strokeStyle = `rgba(90,90,95,${0.08 + rnd() * 0.25})`;
+      g.lineWidth = 0.6 + rnd() * 2.2;
+      g.beginPath();
+      g.moveTo(x, y);
+      for (let i = 0; i < 40; i++) {
+        x += Math.cos(ang) * 30 + (rnd() - 0.5) * 26;
+        y += Math.sin(ang) * 30 + (rnd() - 0.5) * 26;
+        g.lineTo(x, y);
+      }
+      g.stroke();
+    }
+    g.filter = 'blur(0.6px)';
+    g.drawImage(c, 0, 0);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = 8;
+    return t;
+  });
+}

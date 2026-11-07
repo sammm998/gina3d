@@ -100,6 +100,16 @@ export const ZONES = [
     tour: 'Byxor och kostymbyxor i alla passformer.',
   },
   {
+    id: 'lounge',
+    level: 3,
+    name: 'Gina Lounge',
+    color: '#2b2622',
+    rect: [-12.5, -7.5, 12.5, 7.5],
+    categories: [],
+    viewpoint: { x: 6.5, z: 4.2, lookAt: [-1.7, -2] },
+    tour: 'Gina Lounge: catwalk med säsongens plagg, showcase, bar och lounge.',
+  },
+  {
     id: 'outerwear',
     name: 'Ytterkläder',
     color: '#e7e3da',

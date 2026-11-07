@@ -6,6 +6,7 @@ import Mannequin from './Mannequin.jsx';
 import ModelOrFallback from '../ModelOrFallback.jsx';
 import { FLOOR_H, MODELS } from '../../config/storeConfig.js';
 import Escalator from './Escalator.jsx';
+import { Bar, BarBack, BarStool, Backdrop, Bench, CoffeeTable, LoungeRug, Runway, Showcase, Sofa, Stage, WallPanels } from './Lounge.jsx';
 
 /**
  * Mappning typ -> komponent. Lägg till en ny möbeltyp genom att skriva en
@@ -31,6 +32,18 @@ export const FIXTURE_COMPONENTS = {
   wallShelves: WallShelves,
   posterStand: PosterStand,
   lightbox: Lightbox,
+  runway: Runway,
+  stage: Stage,
+  backdrop: Backdrop,
+  bench: Bench,
+  bar: Bar,
+  barBack: BarBack,
+  barStool: BarStool,
+  sofa: Sofa,
+  coffeeTable: CoffeeTable,
+  showcase: Showcase,
+  loungeRug: LoungeRug,
+  wallPanels: WallPanels,
 };
 
 /** Möbeltyper som kan ersättas med en .glb via MODELS i storeConfig.js. */

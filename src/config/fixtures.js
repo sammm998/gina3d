@@ -233,6 +233,14 @@ const BOOTHS_BASE = [
   { id: 'B', rect: [-5.5, STORE.minZ, -4.1, STORE.minZ + 1.45], stand: { x: -4.9, z: STORE.minZ + 0.85 } },
 ];
 
+/** Lounge-möbel med kolliderare (rektangel i lokal bredd w × djup d). */
+function loungePiece(id, type, x, z, rot, w, d, opts = {}) {
+  const f = { id, type, zone: 'lounge', x, z, rot, w, d, ...opts };
+  f.colliders = [{ rect: rectFor(f, w, d) }];
+  f.map = { rect: rectFor(f, w, d) };
+  return f;
+}
+
 /**
  * Flyttar möbler till en annan våning: produktplatserna lyfts med våningshöjden
  * (möblerna själva ritas med y-förskjutning i fixtures/index.jsx).
@@ -416,7 +424,7 @@ const LAYOUT = [
     wallBay('t-wb-b5', 'trousers', maxX, -4.6, FACE_NX),
     wallBay('t-wb-b6', 'trousers', maxX, -1.9, FACE_NX),
     freeRail('t-fr-b1', 'trousers', 3.0, -3.2, R0, { length: 1.8 }),
-    freeRail('t-fr-b2', 'trousers', 10.4, 1.0, FACE_X, { length: 1.8 }),
+    freeRail('t-fr-b2', 'trousers', 6.4, 4.4, R0, { length: 1.8 }),
     podium('t-pod-b1', 'trousers', 3.0, 1.2, { pool: 'new' }),
     table('t-tb-b1', 'trousers', 10.2, 5.0, R0, { w: 1.7, pool: 'accessories' }),
     screen('t-scr-1', 'trousers', 5.2, 5.8, R0, { images: [1, 2, 3, 0] }),
@@ -425,6 +433,47 @@ const LAYOUT = [
     gondola('t-gd-2', 'trousers', 1.2, 4.0, R0),
     plant('t-plant-3', 'trousers', maxX - 0.55, 6.9, 1.15),
     plant('t-plant-4', 'trousers', 0.6, 6.9, 1.0),
+  ]),
+
+  // ================================================================ PLAN 4 – GINA LOUNGE (level 3)
+  ...onLevel(3, [
+    // mörk heltäckande matta och väggpaneler – loungekänsla
+    { id: 'l-floor', type: 'loungeRug', zone: 'lounge', x: -1.9, z: 0, rot: 0, w: 21, d: 14.8, dark: true, colliders: [] },
+    { id: 'l-panels-b', type: 'wallPanels', zone: 'lounge', x: -1.9, z: minZ + 0.01, rot: 0, w: 21, colliders: [] },
+    { id: 'l-panels-l', type: 'wallPanels', zone: 'lounge', x: minX + 0.01, z: 0, rot: FACE_X, w: 15, colliders: [] },
+    // catwalk längs butikens mitt, med scen och fond längst bak
+    loungePiece('l-runway', 'runway', -1.5, -1.6, 0, 1.6, 9.6, { h: 0.32 }),
+    loungePiece('l-stage', 'stage', -1.5, -6.85, 0, 6.4, 1.3, { h: 0.32 }),
+    { id: 'l-backdrop', type: 'backdrop', zone: 'lounge', x: -1.5, z: STORE.minZ + 0.02, rot: 0, w: 7.2, h: 3.3, colliders: [] },
+    // publik: bänkrader på båda sidor
+    ...[-4.0, -2.0, 0.0, 2.0].flatMap((z, i) => [
+      loungePiece(`l-bench-l${i}`, 'bench', -3.2, z, FACE_X, 1.7, 0.45),
+      loungePiece(`l-bench-r${i}`, 'bench', 0.2, z, FACE_NX, 1.7, 0.45),
+      loungePiece(`l-bench-l2${i}`, 'bench', -4.6, z, FACE_X, 1.7, 0.45, { high: true }),
+      loungePiece(`l-bench-r2${i}`, 'bench', 1.6, z, FACE_NX, 1.7, 0.45, { high: true }),
+    ]),
+    // bar längs vänsterväggen
+    loungePiece('l-bar', 'bar', minX + 1.35, 1.0, FACE_X, 4.2, 0.7),
+    { id: 'l-bar-back', type: 'barBack', zone: 'lounge', x: minX + 0.06, z: 1.0, rot: FACE_X, w: 4.6, colliders: [] },
+    ...[-0.6, 0.4, 1.4, 2.4].map((z, i) => ({ id: `l-stool${i}`, type: 'barStool', zone: 'lounge', x: minX + 2.15, z, rot: 0, colliders: [{ circle: [minX + 2.15, z, 0.22] }] })),
+    // lounge med soffor och soffbord vid fönstren
+    { id: 'l-rug1', type: 'loungeRug', light: true, zone: 'lounge', x: -8.6, z: 4.65, rot: 0, w: 3.6, d: 4.2, colliders: [] },
+    { id: 'l-rug2', type: 'loungeRug', light: true, zone: 'lounge', x: 3.6, z: 5.4, rot: 0, w: 3.6, d: 2.8, colliders: [] },
+    loungePiece('l-sofa1', 'sofa', -8.6, 5.9, FACE_NZ, 2.4, 0.9),
+    loungePiece('l-sofa2', 'sofa', -8.6, 3.4, 0, 2.4, 0.9),
+    loungePiece('l-ctable1', 'coffeeTable', -8.6, 4.65, 0, 1.2, 0.7),
+    loungePiece('l-sofa3', 'sofa', 3.6, 6.2, FACE_NZ, 2.4, 0.9),
+    loungePiece('l-ctable2', 'coffeeTable', 3.6, 4.95, 0, 1.2, 0.7),
+    // showcase: glasmonter med skyltdockor i säsongens plagg
+    loungePiece('l-showcase', 'showcase', 4.6, -4.4, 0, 3.0, 1.8),
+    mannequin('l-mq-1', 'lounge', 3.7, -4.4, 0.2, ['outer', 'lower'], 0.16),
+    mannequin('l-mq-2', 'lounge', 4.6, -4.4, 0, ['full'], 0.16),
+    mannequin('l-mq-3', 'lounge', 5.5, -4.4, -0.2, ['upper', 'skirt'], 0.16),
+    plant('l-plant1', 'lounge', minX + 0.55, 6.9, 1.2),
+    plant('l-plant2', 'lounge', 6.6, 6.9, 1.1),
+    plant('l-plant3', 'lounge', -5.8, -6.9, 1.0),
+    { id: 'l-logo', type: 'wallLogo', zone: 'lounge', x: maxX - 0.012, z: 4.5, y: 2.3, rot: FACE_NX, width: 2.6, colliders: [] },
+    photo('l-ph-2', 'right', 5.6, 1.85, 1.3, 1.8, 2),
   ]),
 ];
 

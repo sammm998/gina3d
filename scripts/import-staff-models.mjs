@@ -19,7 +19,8 @@ const CAST = {
   sara: ['Female_Adult_11', 'f011'], // brun klänning
   ella: ['Female_Adult_08', 'f008'], // grått linne, jeans
   linnea: ['Female_Adult_14', 'f017'], // grå kavaj
-  mike: ['Male_Adult_09', 'm017'], // mörkblå t-shirt, jeans
+  mike: ['Male_Adult_09', 'm017'],
+  alva: ['Female_Adult_09', 'f009'], // värdinna i Gina Lounge // mörkblå t-shirt, jeans
   noah: ['Male_Adult_08', 'm014'], // ljusblå skjorta
 };
 /** Kunder som strosar runt i butiken (assets/models/shopper-*.glb). */
@@ -29,8 +30,23 @@ const SHOPPERS = {
   3: ['Female_Adult_17', 'f006'], // grön t-shirt
   4: ['Male_Adult_04', 'm006'], // jacka, chinos
 };
+/** Catwalkmodeller i Gina Lounge (assets/models/model-*.glb). */
+const RUNWAY = {
+  1: ['Female_Party_01', 'f010'], // blond
+  2: ['Female_Adult_13', 'f019'], // blond
+  3: ['Female_Adult_04', 'f004'], // blond
+  4: ['Female_Adult_15', 'f018'], // brunett
+  5: ['Female_Adult_12', 'f012'], // brunett
+};
 const ANIM = 'Assets/Animations/';
-const anims = (g, shopper) => shopper
+const anims = (g, shopper) => shopper === 'runway'
+  ? {
+      // catwalk: självsäker modellgång, poserar vid slutet av catwalken
+      walk: `${ANIM}all_animations_max_motextr_xy/f_walk_self-assured.max.fbx`,
+      idle: `${ANIM}all_animations_max_motextr_static/f_idle_neutral_04.max.fbx`,
+      talk: `${ANIM}all_animations_max_motextr_static/f_idle_look_around_02.max.fbx`,
+    }
+  : shopper
   ? {
       // kunder: lugn promenad och "titta runt" när de står still
       walk: `${ANIM}all_animations_max_motextr_xy/${g}_walk_stroll_01.max.fbx`,
@@ -59,6 +75,7 @@ const specs = [];
 const jobs = [
   ...Object.entries(CAST).map(([id, v]) => [`staff-${id}`, ...v, false]),
   ...Object.entries(SHOPPERS).map(([id, v]) => [`shopper-${id}`, ...v, true]),
+  ...Object.entries(RUNWAY).map(([id, v]) => [`model-${id}`, ...v, 'runway']),
 ];
 for (const [name, av, code, shopper] of jobs) {
   if (only.length && !only.some((o) => name.endsWith(o))) continue;

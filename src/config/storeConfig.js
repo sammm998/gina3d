@@ -68,6 +68,7 @@ export const LEVELS = [
   { id: 0, name: 'Entréplan', short: 'Plan 1' },
   { id: 1, name: 'Klänningar & fest', short: 'Plan 2' },
   { id: 2, name: 'Stickat & byxor', short: 'Plan 3' },
+  { id: 3, name: 'Gina Lounge', short: 'Plan 4' },
 ];
 export const TOP_Y = (LEVELS.length - 1) * FLOOR_H + STORE.height; // översta taket
 
@@ -84,6 +85,11 @@ export const ESCALATORS = [
   {
     id: 'e2', fromLevel: 1, minX: 7.48, maxX: 10.28, divider: 8.88, ...RUN,
     lanes: [{ id: 'up', x: 8.18, dir: 1 }, { id: 'down', x: 9.58, dir: -1 }],
+  },
+  {
+    // till Gina Lounge (plan 4)
+    id: 'e3', fromLevel: 2, minX: 11.08, maxX: 13.88, divider: 12.48, ...RUN,
+    lanes: [{ id: 'up', x: 11.78, dir: 1 }, { id: 'down', x: 13.18, dir: -1 }],
   },
 ];
 /** Bakåtkompatibelt: den första rulltrappan. */
