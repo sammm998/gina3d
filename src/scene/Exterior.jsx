@@ -171,6 +171,101 @@ function VerticalLogo() {
   );
 }
 
+const grassMat = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#6f8b4c';
+  g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 5000; i++) {
+    const v = Math.random();
+    g.fillStyle = v > 0.5 ? 'rgba(140,170,90,0.35)' : 'rgba(60,85,40,0.35)';
+    g.fillRect(Math.random() * 256, Math.random() * 256, 2, 3);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(60, 60);
+  return new THREE.MeshStandardMaterial({ map: t, roughness: 1 });
+})();
+const asphalt = new THREE.MeshStandardMaterial({ color: '#3d3e41', roughness: 0.95 });
+const paint = new THREE.MeshBasicMaterial({ color: '#e9e7df' });
+const curb = new THREE.MeshStandardMaterial({ color: '#b9b6b0', roughness: 0.9 });
+
+/** Gata med kantsten, trottoar och vägmarkeringar. */
+function Street() {
+  const z = maxZ + 18;
+  return (
+    <group>
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[0, 0.06, z + s * 4.05]} material={curb}>
+          <boxGeometry args={[160, 0.12, 0.2]} />
+        </mesh>
+      ))}
+      <mesh rotation-x={-Math.PI / 2} position={[0, 0.07, z + 6]} material={curb} raycast={() => null}>
+        <planeGeometry args={[160, 3.6]} />
+      </mesh>
+      {Array.from({ length: 40 }, (_, i) => (
+        <mesh key={i} rotation-x={-Math.PI / 2} position={[-80 + i * 4 + 1, 0.008, z]} material={paint} raycast={() => null}>
+          <planeGeometry args={[2, 0.12]} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** Grannkvarteret på andra sidan gatan och en trädrad – så att horisonten inte är tom. */
+const winTex = (() => {
+  const c = document.createElement('canvas');
+  c.width = 128;
+  c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#d8d3c9';
+  g.fillRect(0, 0, 128, 256);
+  for (let y = 10; y < 256; y += 32) for (let x = 8; x < 128; x += 30) {
+    g.fillStyle = Math.random() > 0.3 ? '#7f8c96' : '#a9b6bf';
+    g.fillRect(x, y, 20, 18);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+})();
+function Neighbourhood() {
+  const blocks = useMemo(() => {
+    const out = [];
+    let x = -70;
+    let s = 5;
+    const r = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+    while (x < 70) {
+      const w = 10 + r() * 12, h = 8 + r() * 14;
+      const tint = ['#d8d3c9', '#cfc7bb', '#e2ddd3', '#bfb6a8'][Math.floor(r() * 4)];
+      out.push({ x: x + w / 2, w, h, tint });
+      x += w + 3 + r() * 6;
+    }
+    return out;
+  }, []);
+  const z = maxZ + 32;
+  return (
+    <group>
+      {blocks.map((b, i) => {
+        const t = winTex.clone();
+        t.repeat.set(b.w / 6, b.h / 8);
+        t.needsUpdate = true;
+        return (
+          <mesh key={i} position={[b.x, b.h / 2, z + (i % 2) * 3]} raycast={() => null}>
+            <boxGeometry args={[b.w, b.h, 8]} />
+            <meshStandardMaterial map={t} color={b.tint} roughness={0.9} />
+          </mesh>
+        );
+      })}
+      {Array.from({ length: 26 }, (_, i) => (
+        <Birch key={`t${i}`} x={-65 + i * 5.2} z={maxZ + 25 + (i % 3)} h={6 + (i % 4)} seed={i + 30} />
+      ))}
+    </group>
+  );
+}
+
 export default function Exterior() {
   const W = maxX - minX, D = maxZ - minZ;
   const upper = ROOF - H; // fasadens höjd ovanför entréplanets skyltfönster
@@ -201,18 +296,18 @@ export default function Exterior() {
       <mesh position={[minX - 0.05, ROOF / 2, maxZ + 0.1]} material={steel}>
         <boxGeometry args={[0.9, ROOF, 0.4]} />
       </mesh>
+      <Street />
+      <Neighbourhood />
       {/* gata och gräsremsa framför torget */}
-      <mesh rotation-x={-Math.PI / 2} position={[0, 0.004, maxZ + 18]} raycast={() => null}>
-        <planeGeometry args={[120, 8]} />
-        <meshStandardMaterial color="#3e3f42" roughness={0.95} />
+      <mesh rotation-x={-Math.PI / 2} position={[0, 0.004, maxZ + 18]} material={asphalt} raycast={() => null}>
+        <planeGeometry args={[160, 8]} />
       </mesh>
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.003, maxZ + 13]} raycast={() => null}>
         <planeGeometry args={[120, 2.2]} />
         <meshStandardMaterial color="#6f8f4e" roughness={1} />
       </mesh>
-      <mesh rotation-x={-Math.PI / 2} position={[0, -0.01, 0]} raycast={() => null}>
+      <mesh rotation-x={-Math.PI / 2} position={[0, -0.01, 0]} material={grassMat} raycast={() => null}>
         <planeGeometry args={[160, 160]} />
-        <meshStandardMaterial color="#7c8a63" roughness={1} />
       </mesh>
       {/* betongbänkar och gatlyktor */}
       {[-9, 9].map((x) => (

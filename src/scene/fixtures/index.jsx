@@ -1,7 +1,7 @@
 import { FIXTURES } from '../../config/fixtures.js';
 import { CashDesk, Gondola, Platform, Podium, RoundPlatform, Shelf, Table, WallShelves } from './Furniture.jsx';
 import { FreeRail, WallBay } from './Rails.jsx';
-import { DigitalScreen, FittingRooms, FramedPhoto, Lightbox, Plant, PosterStand, TryOnMirror, WallLogo, WallText } from './Decor.jsx';
+import { Billboard, DigitalScreen, FittingRooms, FramedPhoto, Lightbox, Plant, PosterStand, TryOnMirror, WallLogo, WallText } from './Decor.jsx';
 import Mannequin from './Mannequin.jsx';
 import ModelOrFallback from '../ModelOrFallback.jsx';
 import { FLOOR_H, MODELS } from '../../config/storeConfig.js';
@@ -45,6 +45,7 @@ export const FIXTURE_COMPONENTS = {
   showcase: Showcase,
   loungeRug: LoungeRug,
   missyTheme: MissYTheme,
+  billboard: Billboard,
   wallPanels: WallPanels,
 };
 

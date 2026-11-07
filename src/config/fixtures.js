@@ -394,43 +394,43 @@ const LAYOUT = [
   // ================================================================ PLAN 3 (level 2)
   ...onLevel(2, [
     // --- Tröjor & stickat: hyllvägg med vikt stickat, bakvägg, bord och podier
-    shelf('t-sh-1', 'knit', minX, -5.5, FACE_X),
-    shelf('t-sh-2', 'knit', minX, -3.1, FACE_X),
-    shelf('t-sh-3', 'knit', minX, -0.7, FACE_X),
-    shelf('t-sh-4', 'knit', minX, 1.7, FACE_X),
-    { id: 't-text', type: 'wallText', zone: 'knit', text: 'stickat', x: minX + 0.012, z: -1.9, y: 2.55, rot: FACE_X, height: 0.62, colliders: [] },
-    wallBay('t-wb-k1', 'knit', -9.6, minZ, R0),
-    wallBay('t-wb-k2', 'knit', -6.9, minZ, R0),
+    shelf('t-sh-1', 'missy', minX, -5.5, FACE_X),
+    shelf('t-sh-2', 'missy', minX, -3.1, FACE_X),
+    shelf('t-sh-3', 'missy', minX, -0.7, FACE_X),
+    shelf('t-sh-4', 'missy', minX, 1.7, FACE_X),
+    { id: 't-text', type: 'wallText', zone: 'missy', text: 'miss y', x: minX + 0.012, z: -1.9, y: 2.55, rot: FACE_X, height: 0.62, colliders: [] },
+    wallBay('t-wb-k1', 'missy', -9.6, minZ, R0),
+    wallBay('t-wb-k2', 'missy', -6.9, minZ, R0),
     // Miss Y (ginatricot.com/se/miss-y)
     wallBay('t-wb-k3', 'missy', -4.2, minZ, R0),
     wallBay('t-wb-k4', 'missy', -1.5, minZ, R0),
     // rosa Miss Y-tema: vägg, neonskylt, matta, puffar och underklädesbord
     { id: 't-missy', type: 'missyTheme', zone: 'missy', x: -2.85, z: -3.6, rot: R0, w: 7.6, colliders: [{ rect: [-3.7, -3.45, -2.0, -2.55] }, { circle: [-4.25, -2.1, 0.4] }, { circle: [-1.45, -2.1, 0.4] }] },
-    table('t-tb-k1', 'knit', -8.8, -1.4, FACE_X, { w: 1.8 }),
-    table('t-tb-k2', 'knit', -5.2, 3.4, R0, { w: 1.7 }),
-    podium('t-pod-k1', 'knit', -5.4, -1.2),
-    podium('t-pod-k2', 'knit', -2.2, 0.9),
-    freeRail('t-fr-k1', 'knit', -8.8, 2.6, FACE_X, { length: 1.4 }),
-    platform('t-win-1', 'knit', -2.4, 5.5, { w: 3.2, d: 0.95 }),
-    mannequin('t-mq-1', 'knit', -3.4, 5.5, 0.2, ['upper', 'lower'], 0.12),
-    mannequin('t-mq-2', 'knit', -2.4, 5.5, 0, ['outer', 'lower'], 0.12),
-    mannequin('t-mq-3', 'knit', -1.4, 5.5, -0.2, ['upper', 'skirt'], 0.12),
+    table('t-tb-k1', 'missy', -8.8, -1.4, FACE_X, { w: 1.8 }),
+    table('t-tb-k2', 'missy', -5.2, 3.4, R0, { w: 1.7 }),
+    podium('t-pod-k1', 'missy', -5.4, -1.2),
+    podium('t-pod-k2', 'missy', -2.2, 0.9),
+    freeRail('t-fr-k1', 'missy', -8.8, 2.6, FACE_X, { length: 1.4 }),
+    platform('t-win-1', 'missy', -2.4, 5.5, { w: 3.2, d: 0.95 }),
+    mannequin('t-mq-1', 'missy', -3.4, 5.5, 0.2, ['upper', 'lower'], 0.12),
+    mannequin('t-mq-2', 'missy', -2.4, 5.5, 0, ['outer', 'lower'], 0.12),
+    mannequin('t-mq-3', 'missy', -1.4, 5.5, -0.2, ['upper', 'skirt'], 0.12),
     photo('t-ph-1', 'left', 5.6, 1.75, 1.3, 1.9, 0),
     photo('t-ph-4', 'back', -6.9, 2.85, 1.1, 0.8, 2),
     gondola('t-gd-1', 'missy', -2.6, -4.6, R0),
     freeRail('t-fr-m1', 'missy', -5.4, -4.8, R0, { length: 1.6 }),
-    posterStand('t-ps-1', 'knit', -0.2, 2.8, R0, 3),
-    plant('t-plant-1', 'knit', minX + 0.55, 6.9, 1.15),
-    plant('t-plant-2', 'knit', -0.4, minZ + 0.5, 0.95),
+    posterStand('t-ps-1', 'missy', -0.2, 2.8, R0, 3),
+    plant('t-plant-1', 'missy', minX + 0.55, 6.9, 1.15),
+    plant('t-plant-2', 'missy', -0.4, minZ + 0.5, 0.95),
 
     // --- Byxor & kostym: väggar med klädstänger, ställningar och skärm
-    wallBay('t-wb-b1', 'trousers', 1.4, minZ, R0),
-    wallBay('t-wb-b2', 'trousers', 4.1, minZ, R0),
+    wallBay('t-wb-b1', 'knit', 1.4, minZ, R0),
+    wallBay('t-wb-b2', 'knit', 4.1, minZ, R0),
     wallBay('t-wb-b3', 'trousers', 6.8, minZ, R0),
     wallBay('t-wb-b4', 'trousers', 9.5, minZ, R0),
     wallBay('t-wb-b5', 'trousers', maxX, -4.6, FACE_NX),
     wallBay('t-wb-b6', 'trousers', maxX, -1.9, FACE_NX),
-    freeRail('t-fr-b1', 'trousers', 3.0, -3.2, R0, { length: 1.8 }),
+    freeRail('t-fr-b1', 'knit', 3.0, -3.2, R0, { length: 1.8 }),
     freeRail('t-fr-b2', 'trousers', 6.4, 4.4, R0, { length: 1.8 }),
     podium('t-pod-b1', 'trousers', 3.0, 1.2, { pool: 'new' }),
     table('t-tb-b1', 'trousers', 10.2, 5.0, R0, { w: 1.7, pool: 'accessories' }),
@@ -570,7 +570,24 @@ function fillOut(existing) {
   return out;
 }
 
-export const FIXTURES = [...SCALED, ...fillOut(SCALED)];
+/** Kollektion ute på torget: podier med skyltdockor och stora kampanjskyltar. */
+function outdoorCollection() {
+  const z = REAL.maxZ + 3.4;
+  const out = [];
+  for (const side of [-1, 1]) {
+    const cx = side * 9.5;
+    const pl = { id: `out-pl${side}`, type: 'platform', zone: 'entrance', x: cx, z, rot: 0, w: 4.4, d: 1.3, h: 0.18, slots: [] };
+    pl.colliders = [{ rect: [cx - 2.2, z - 0.65, cx + 2.2, z + 0.65] }];
+    out.push(pl);
+    out.push(mannequin(`out-mq${side}a`, 'entrance', cx - 1.4, z, side * 0.2, ['full'], 0.18));
+    out.push(mannequin(`out-mq${side}b`, 'entrance', cx, z, 0, ['outer', 'lower'], 0.18));
+    out.push(mannequin(`out-mq${side}c`, 'entrance', cx + 1.4, z, -side * 0.2, ['upper', 'skirt'], 0.18));
+    out.push({ id: `out-bb${side}`, type: 'billboard', zone: 'entrance', x: side * 16.5, z: z + 0.4, rot: -side * 0.35, image: side < 0 ? 0 : 1, colliders: [{ circle: [side * 16.5, z + 0.4, 0.5] }] });
+  }
+  return out;
+}
+
+export const FIXTURES = [...SCALED, ...fillOut(SCALED), ...outdoorCollection()];
 
 /** Provhytternas insida (x0, z0, x1, z1) på entréplan – att kliva in öppnar provningen. */
 const fittingDelta = FIXTURES.find((f) => f.id === 'fitting').delta;

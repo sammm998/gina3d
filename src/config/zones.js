@@ -84,9 +84,9 @@ export const ZONES = [
     level: 2,
     name: 'Tröjor & stickat',
     color: '#efe7da',
-    rect: [-12.5, -7.5, 0, 7.5],
+    rect: [0, -7.5, 12.5, 0],
     categories: ['knitwear', 'cardigans', 'sweaters'],
-    viewpoint: { x: -1.2, z: 3.4, lookAt: [-8, -2] },
+    viewpoint: { x: 3.0, z: 0.4, lookAt: [3, -6] },
     tour: 'Plan 3: stickade tröjor, koftor och mysiga lager.',
   },
   {
@@ -94,7 +94,7 @@ export const ZONES = [
     level: 2,
     name: 'Byxor',
     color: '#e6e3dc',
-    rect: [0, -7.5, 12.5, 7.5],
+    rect: [0, 0, 12.5, 7.5],
     categories: ['trousers', 'pants', 'shorts'],
     viewpoint: { x: 4.2, z: 3.6, lookAt: [5, -6] },
     tour: 'Byxor och kostymbyxor i alla passformer.',
@@ -104,9 +104,9 @@ export const ZONES = [
     level: 2,
     name: 'Miss Y',
     color: '#f2e2e6',
-    rect: [-7, -7.5, 0, -3.5],
+    rect: [-12.5, -7.5, 0, 7.5],
     categories: [],
-    viewpoint: { x: -3.4, z: -1.2, lookAt: [-3.4, -7] },
+    viewpoint: { x: -1.5, z: 2.5, lookAt: [-8, -3] },
     tour: 'Miss Y – Gina Tricots linje för tjejer: plagg från ginatricot.com/se/miss-y.',
   },
   {
@@ -140,7 +140,7 @@ export const ZONES = [
 ];
 
 /** Ordningen för den guidade turen. */
-export const TOUR_ORDER = ['entrance', 'tops', 'denim', 'checkout', 'outerwear', 'accessories', 'dresses', 'party', 'knit', 'trousers'];
+export const TOUR_ORDER = ['entrance', 'tops', 'denim', 'checkout', 'outerwear', 'accessories', 'dresses', 'party', 'missy', 'knit', 'trousers', 'lounge'];
 
 /** Hittar vilken zon en produktkategori hör till. */
 export function zoneForCategory(category) {

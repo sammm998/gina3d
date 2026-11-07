@@ -10,8 +10,8 @@ import { STORE } from '../../config/storeConfig.js';
 import { glowTexture, textTexture } from '../textures.js';
 
 const M = {
-  wall: new THREE.MeshStandardMaterial({ color: '#f6c9d5', roughness: 0.9 }),
-  rug: new THREE.MeshStandardMaterial({ color: '#f3b8c8', roughness: 1 }),
+  wall: new THREE.MeshStandardMaterial({ color: '#f6c9d5', roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+  rug: new THREE.MeshStandardMaterial({ color: '#f3b8c8', roughness: 1, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }),
   velvet: new THREE.MeshPhysicalMaterial({ color: '#e98aa6', roughness: 0.85, sheen: 1, sheenColor: new THREE.Color('#ffd3e0'), sheenRoughness: 0.5 }),
   table: new THREE.MeshStandardMaterial({ color: '#fbe3ea', roughness: 0.4 }),
   neon: new THREE.MeshBasicMaterial({ color: '#ff5fa2', toneMapped: false }),
@@ -45,9 +45,12 @@ export function MissYTheme({ f }) {
   }, []);
   return (
     <group position={[f.x, 0, f.z]}>
-      {/* rosa vägg bakom Miss Y-stängerna */}
-      <mesh position={[0, 1.75, z0 + 0.006]} material={M.wall} raycast={() => null}>
-        <planeGeometry args={[f.w, 3.5]} />
+      {/* rosa väggar: hela vänstra halvan av bakväggen och hela vänsterväggen */}
+      <mesh position={[(STORE.minX + 0) / 2 - f.x, 1.75, z0 + 0.006]} material={M.wall} raycast={() => null}>
+        <planeGeometry args={[-STORE.minX, 3.5]} />
+      </mesh>
+      <mesh position={[STORE.minX - f.x + 0.006, 1.75, (STORE.minZ + STORE.maxZ) / 2 - f.z]} rotation-y={Math.PI / 2} material={M.wall} raycast={() => null}>
+        <planeGeometry args={[STORE.depth, 3.5]} />
       </mesh>
       {/* rosa neonskylt med glöd */}
       <mesh position={[0, 3.0, z0 + 0.02]} raycast={() => null}>
@@ -59,7 +62,7 @@ export function MissYTheme({ f }) {
         <meshBasicMaterial map={neon} transparent toneMapped={false} color="#ffffff" />
       </mesh>
       {/* rund rosa matta, puffar och underklädesbord */}
-      <mesh position={[0, 0.006, 0.6]} rotation-x={-Math.PI / 2} material={M.rug} raycast={() => null}>
+      <mesh position={[0, 0.02, 0.6]} rotation-x={-Math.PI / 2} material={M.rug} raycast={() => null} renderOrder={1}>
         <circleGeometry args={[2.2, 64]} />
       </mesh>
       {[[-1.4, 1.5], [1.4, 1.5]].map(([x, z]) => (

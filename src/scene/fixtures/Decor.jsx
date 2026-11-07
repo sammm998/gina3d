@@ -388,3 +388,26 @@ export function TryOnMirror({ f }) {
     </group>
   );
 }
+
+/** Stor fristående kampanjskylt utomhus (dubbelsidig, upplyst) med säsongens kollektion. */
+export function Billboard({ f }) {
+  const url = PATHS.campaign[f.image % PATHS.campaign.length];
+  const tex = useLazyTexture(url, [f.x, 2, f.z], 40);
+  const W = 2.6, H = 3.6;
+  return (
+    <group position={[f.x, 0, f.z]} rotation-y={f.rot}>
+      <mesh position-y={0.25} material={MAT.black}>
+        <boxGeometry args={[0.6, 0.5, 0.4]} />
+      </mesh>
+      <mesh position-y={0.5 + H / 2} material={MAT.black}>
+        <boxGeometry args={[W + 0.12, H + 0.12, 0.16]} />
+      </mesh>
+      {[1, -1].map((s) => (
+        <mesh key={s} position={[0, 0.5 + H / 2, s * 0.082]} rotation-y={s < 0 ? Math.PI : 0} raycast={() => null}>
+          <planeGeometry args={[W, H]} />
+          <meshBasicMaterial key={tex ? 't' : 'n'} map={tex} color={tex ? '#ffffff' : '#e8e2d8'} toneMapped={false} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
