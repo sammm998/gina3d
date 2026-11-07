@@ -317,6 +317,12 @@ två brunetter; Rocketbox, `assets/models/model-*.glb`) går i tur och ordning, 
 Runt catwalken står publikbänkar i sammet, och våningen har en bar med marmorskiva, loungesoffor,
 en glasmonter med skyltdockor i säsongens plagg, mörk matta och valnötspaneler. Alva står i baren.
 
+## Live-multiplayer
+
+Alla som är inne i butiken samtidigt ser varandra som avatarer i realtid, med etiketten
+”Besökare”. Antalet visas uppe till vänster. Servern (`server/multiplayer.mjs`, WebSocket på
+`/ws`) tar bara emot position och riktning – inga namn eller personuppgifter.
+
 ## Katalog och betalning
 
 - **/katalog** visar hela sortimentet från ginatricot.com (ca 8 400 produkter från sitemapen) med

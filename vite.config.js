@@ -37,6 +37,8 @@ function staticRootDirs() {
         const { handleVoice } = await import(/* @vite-ignore */ pathToFileURL(path.resolve('server/chat.mjs')).href);
         handleVoice(req, res);
       });
+      // multiplayer i dev-läge (samma modul som i produktion)
+      import(/* @vite-ignore */ pathToFileURL(path.resolve('server/multiplayer.mjs')).href).then((m) => server.httpServer && m.attachMultiplayer(server.httpServer));
       // katalog och kassa i dev-läge
       let shop = null;
       const shopHandler = async (req, res) => {

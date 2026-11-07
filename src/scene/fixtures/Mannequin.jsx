@@ -89,12 +89,13 @@ function projectedGeometry(base, offset, scale, A, B) {
  * borttagen) blir ett "uppblåst" 3D-plagg i rätt storlek, placerat på dockans
  * axlar resp. höfter – samma plagg som visas när man klickar på det.
  */
+/** Plaggets längd och största bredd på dockan (meter) samt var överkanten sitter. */
 const WORN = {
-  upper: { width: 0.37, y: 1.43, z: 0.035, depth: 0.1 },
-  outer: { width: 0.41, y: 1.445, z: 0.05, depth: 0.12 },
-  full: { width: 0.37, y: 1.43, z: 0.035, depth: 0.1 },
-  lower: { width: 0.19, y: 0.9, z: 0.03, depth: 0.09 },
-  skirt: { width: 0.19, y: 0.9, z: 0.035, depth: 0.1 },
+  upper: { len: 0.62, maxW: 0.52, top: 1.47, z: 0.035, depth: 0.1 },
+  outer: { len: 0.9, maxW: 0.6, top: 1.48, z: 0.05, depth: 0.12 },
+  full: { len: 1.0, maxW: 0.58, top: 1.47, z: 0.035, depth: 0.1 },
+  lower: { len: 0.98, maxW: 0.4, top: 0.99, z: 0.03, depth: 0.09 },
+  skirt: { len: 0.5, maxW: 0.5, top: 0.99, z: 0.035, depth: 0.1 },
 };
 function WornGarment({ piece, product, ev }) {
   const tex = useLazyTexture(product.tryOnImage, [0, 1, 0], 1e6);
@@ -122,13 +123,13 @@ function WornGarment({ piece, product, ev }) {
   }, [hl, mats]);
   if (!prep || !geom || !mats) return null;
   const W = WORN[piece.type] ?? WORN.upper;
-  const { canvas: c, anchors: A } = prep;
-  const pxW = Math.max(1, (A.right[0] - A.left[0]) * c.width);
-  const H = (W.width / pxW) * c.height; // höjd i meter för hela bilden
-  const cx = ((A.left[0] + A.right[0]) / 2 - 0.5) * (c.width / c.height) * H;
-  const y = W.y - (0.5 - A.left[1]) * H;
+  // Storlek ur plaggets egen form (bilden är beskuren tätt runt plagget):
+  // rätt längd för plaggtypen, och aldrig bredare än en kropp.
+  const aspect = prep.canvas.width / prep.canvas.height;
+  let H = W.len;
+  if (H * aspect > W.maxW) H = W.maxW / aspect;
   return (
-    <mesh geometry={geom} material={mats} position={[-cx, y, W.z]} scale={[H, H, W.depth]} {...ev} userData={{ productId: product.id }} />
+    <mesh geometry={geom} material={mats} position={[0, W.top - H / 2, W.z]} scale={[H, H, W.depth]} {...ev} userData={{ productId: product.id }} />
   );
 }
 

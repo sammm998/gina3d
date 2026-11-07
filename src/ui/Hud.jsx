@@ -101,6 +101,18 @@ function HelpOffer() {
   );
 }
 
+/** Hur många som är inne i butiken just nu (live). */
+function OnlineBadge() {
+  const online = useStore((s) => s.online);
+  if (online < 1) return null;
+  return (
+    <div className="online-badge" role="status">
+      <span className="online-badge__dot" />
+      {online === 1 ? 'Bara du i butiken just nu' : `${online} besökare i butiken just nu`}
+    </div>
+  );
+}
+
 export default function Hud() {
   useTourController();
   useHelpOffers();
@@ -204,6 +216,7 @@ export default function Hud() {
       </header>
 
       <CheckoutBanner />
+      <OnlineBadge />
       <HelpOffer />
       {mapOpen && <Minimap onNavigate={() => window.innerWidth < 700 && setMapOpen(false)} />}
 

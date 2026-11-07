@@ -279,8 +279,6 @@ const LAYOUT = [
   wallShelves('ws-1', 'accessories', minX, 4.0, FACE_X),
   gondola('gd-1', 'tops', -7.6, 4.3, R0),
   gondola('gd-2', 'entrance', 7.2, 4.4, R0, { w: 1.6, pool: 'new' }),
-  posterStand('ps-1', 'entrance', -1.6, 3.6, R0, 0),
-  posterStand('ps-2', 'entrance', 1.6, 3.6, R0, 1),
 
   // --- Denim: hyllvägg till vänster, klädstång på bakväggen, bord och ställning
   shelf('sh-1', 'denim', minX, -5.5, FACE_X),

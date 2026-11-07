@@ -6,6 +6,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { handleChat, handleVoice, initChat } from './server/chat.mjs';
 import { handleShop, initShop } from './server/shop.mjs';
+import { attachMultiplayer } from './server/multiplayer.mjs';
 
 const DIST = path.resolve('dist');
 const PORT = Number(process.env.PORT) || 8080;
@@ -21,7 +22,7 @@ const COMPRESS = new Set(['.glb', '.html', '.js', '.mjs', '.css', '.json', '.svg
 initChat(path.join(DIST, 'data'));
 initShop(path.join(DIST, 'data'));
 
-http
+const server = http
   .createServer((req, res) => {
     if (req.url.startsWith('/api/chat')) return void handleChat(req, res);
     if (req.url.startsWith('/api/voice')) return void handleVoice(req, res);
@@ -55,3 +56,4 @@ http
     (gzip ? stream.pipe(zlib.createGzip()) : stream).pipe(res);
   })
   .listen(PORT, '0.0.0.0', () => console.log(`Servar dist/ på port ${PORT}`));
+attachMultiplayer(server);

@@ -12,6 +12,7 @@ import { buildWorld } from './nav/world.js';
 import { FIXTURES } from './config/fixtures.js';
 import { loadProducts } from './data/products.js';
 import Catalog from './ui/Catalog.jsx';
+import { startMultiplayer } from './net/multiplayer.js';
 
 const IS_CATALOG = window.location.pathname.replace(/\/$/, '') === '/katalog';
 
@@ -31,6 +32,10 @@ function StoreApp() {
   const entered = useStore((s) => s.entered);
   const hasPanel = useStore((s) => !!s.selectedId || s.wishlistOpen || s.cartOpen || s.chat.open);
   const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (entered) startMultiplayer();
+  }, [entered]);
 
   useEffect(() => {
     buildWorld(FIXTURES);

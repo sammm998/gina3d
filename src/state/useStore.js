@@ -232,6 +232,10 @@ export const useStore = create((set, get) => ({
       set({ chat: { ...now, pending: false, items: [...replaceLast(now.items, '🎤 (inspelning)'), { role: 'staff', text: 'Jag når inte servern just nu – försök igen om en stund.', cards: [] }] } });
     }
   },
+  // live-multiplayer
+  online: 0,
+  othersVersion: 0,
+  setOnline: (online, othersVersion) => set({ online, othersVersion }),
   speaking: false,
   setSpeaking: (speaking) => set({ speaking }),
 
