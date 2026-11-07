@@ -133,7 +133,7 @@ function WornGarment({ piece, product, ev }) {
   );
 }
 
-function ProjectedGarment({ piece, product, ev, sleeveMat }) {
+function ProjectedGarment({ piece, product, ev, sleeveMat, fallback = null }) {
   const tex = useLazyTexture(product.tryOnImage, [0, 1, 0], 1e6);
   const hl = useIsHighlighted(product.id);
   const B = BODY[piece.type] ?? BODY.upper;
@@ -146,17 +146,14 @@ function ProjectedGarment({ piece, product, ev, sleeveMat }) {
     return pr.ok ? pr : null;
   }, [tex, kind]);
   const A = prep?.anchors || product.tryOnAnchors || DEFAULT_ANCHORS[t];
+  const rejected = !!tex?.image && !prep;
   const mat = useMemo(() => {
     if (!tex) return null;
     let tx;
-    if (prep) {
-      tx = new THREE.CanvasTexture(prep.canvas);
-      tx.colorSpace = THREE.SRGBColorSpace;
-      tx.anisotropy = 8;
-    } else {
-      tx = tex.clone();
-      tx.needsUpdate = true;
-    }
+    if (!prep) return null;
+    tx = new THREE.CanvasTexture(prep.canvas);
+    tx.colorSpace = THREE.SRGBColorSpace;
+    tx.anisotropy = 8;
     tx.wrapS = tx.wrapT = THREE.ClampToEdgeWrapping;
     return new THREE.MeshStandardMaterial({ map: tx, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.85 });
   }, [tex, prep]);
@@ -182,6 +179,7 @@ function ProjectedGarment({ piece, product, ev, sleeveMat }) {
     }
   }, [piece.type, piece.wide]);
   const geoms = useMemo(() => parts.map((pt) => projectedGeometry(pt.g, pt.o, pt.s, A, B)), [parts, A, B]);
+  if (rejected) return fallback;
   if (!mat) return null;
   const sleeves = piece.type === 'upper' || piece.type === 'outer';
   const long = piece.type === 'outer' || piece.longSleeve;
@@ -250,44 +248,47 @@ function Garment({ piece, eventsFor }) {
   const ev = eventsFor ? eventsFor(piece.productId) : {};
   const ud = { productId: piece.productId };
   // plagget som ett skal runt dockans kropp med produktbilden projicerad fram och bak
-  if (product?.tryOnImage) return <ProjectedGarment piece={piece} product={product} ev={ev} sleeveMat={m} />;
+  const fallback = (() => {
   switch (piece.type) {
-    case 'upper':
-    case 'outer': {
-      const outer = piece.type === 'outer';
-      const long = outer || piece.longSleeve;
-      return (
-        <group {...ev} userData={ud}>
-          <mesh geometry={outer ? geo.coat : geo.top} material={m} scale={[1, 1, 0.76]} userData={ud} />
-          {[-1, 1].map((s) => (
-            <mesh
-              key={s}
-              geometry={long ? geo.sleeveLong : geo.sleeveShort}
-              material={m}
-              position={[s * (ARM_X + 0.02 + (long ? 0.004 : 0.008)), long ? 1.13 : 1.34, 0]}
-              rotation-z={s * ARM_TILT}
-              userData={ud}
-            />
-          ))}
-        </group>
-      );
+      case 'upper':
+      case 'outer': {
+        const outer = piece.type === 'outer';
+        const long = outer || piece.longSleeve;
+        return (
+          <group {...ev} userData={ud}>
+            <mesh geometry={outer ? geo.coat : geo.top} material={m} scale={[1, 1, 0.76]} userData={ud} />
+            {[-1, 1].map((s) => (
+              <mesh
+                key={s}
+                geometry={long ? geo.sleeveLong : geo.sleeveShort}
+                material={m}
+                position={[s * (ARM_X + 0.02 + (long ? 0.004 : 0.008)), long ? 1.13 : 1.34, 0]}
+                rotation-z={s * ARM_TILT}
+                userData={ud}
+              />
+            ))}
+          </group>
+        );
+      }
+      case 'lower':
+        return (
+          <group {...ev} userData={ud}>
+            <mesh geometry={geo.hips} material={m} scale={[1, 1, 0.74]} userData={ud} />
+            {[-1, 1].map((s) => (
+              <mesh key={s} geometry={piece.wide ? geo.pantLegWide : geo.pantLeg} material={m} position={[s * 0.088, 0.5, 0]} userData={ud} />
+            ))}
+          </group>
+        );
+      case 'skirt':
+        return <mesh geometry={geo.skirt} material={m} scale={[1, 1, 0.8]} {...ev} userData={ud} />;
+      case 'full':
+        return <mesh geometry={geo.dress} material={m} scale={[1, 1, 0.78]} {...ev} userData={ud} />;
+      default:
+        return null;
     }
-    case 'lower':
-      return (
-        <group {...ev} userData={ud}>
-          <mesh geometry={geo.hips} material={m} scale={[1, 1, 0.74]} userData={ud} />
-          {[-1, 1].map((s) => (
-            <mesh key={s} geometry={piece.wide ? geo.pantLegWide : geo.pantLeg} material={m} position={[s * 0.088, 0.5, 0]} userData={ud} />
-          ))}
-        </group>
-      );
-    case 'skirt':
-      return <mesh geometry={geo.skirt} material={m} scale={[1, 1, 0.8]} {...ev} userData={ud} />;
-    case 'full':
-      return <mesh geometry={geo.dress} material={m} scale={[1, 1, 0.78]} {...ev} userData={ud} />;
-    default:
-      return null;
-  }
+  })();
+  // riktigt plagg (rensad produktbild) som skal runt kroppen; annars tygets färg
+  return product?.tryOnImage ? <ProjectedGarment piece={piece} product={product} ev={ev} sleeveMat={m} fallback={fallback} /> : fallback;
 }
 
 export default function Mannequin({ f, outfit = [], eventsFor }) {

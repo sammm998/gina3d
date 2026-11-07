@@ -147,6 +147,22 @@ export function prepareGarment(img, type) {
   let filled = 0;
   for (let p = 0; p < w * h; p++) filled += mask[p];
   if (filled / (bw * bh) > 0.9) return remember(img, type, fail('Bakgrunden kunde inte tas bort från bilden.'));
+  // Modellfoto i stället för plaggbild: mycket hud som inte är plaggets egen färg
+  {
+    const rs = [], gs = [], bs = [];
+    for (let p = 0; p < w * h; p += 7) if (mask[p]) { rs.push(d[p * 4]); gs.push(d[p * 4 + 1]); bs.push(d[p * 4 + 2]); }
+    const med = (a) => a.sort((x, y) => x - y)[a.length >> 1] ?? 0;
+    const mr = med(rs), mg = med(gs), mb = med(bs);
+    let skin = 0, n = 0;
+    for (let p = 0; p < w * h; p += 3) {
+      if (!mask[p]) continue;
+      n++;
+      const r = d[p * 4], g = d[p * 4 + 1], b = d[p * 4 + 2];
+      const isSkin = r > 95 && g > 40 && b > 20 && r > g && r > b && r - g > 12 && r - b > 30 && Math.max(r, g, b) - Math.min(r, g, b) > 25;
+      if (isSkin && Math.abs(r - mr) + Math.abs(g - mg) + Math.abs(b - mb) > 70) skin++;
+    }
+    if (n && skin / n > 0.07) return remember(img, type, fail('Bilden visar en modell, inte bara plagget.'));
+  }
   const touches = (x0 <= 1) + (y0 <= 1) + (x1 >= w - 2) + (y1 >= h - 2);
   if (touches >= 3) return remember(img, type, fail('Plagget är beskuret i bilden.'));
   g.putImageData(data, 0, 0);

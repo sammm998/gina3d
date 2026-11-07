@@ -9,6 +9,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { FLOOR_H, LEVELS, STORE, TOP_Y } from '../config/storeConfig.js';
 import { useLogoTexture } from './fixtures/Decor.jsx';
+import { RoundedBox } from '@react-three/drei';
 
 const { minX, maxX, minZ, maxZ } = STORE;
 const H = STORE.height;
@@ -266,6 +267,81 @@ function Neighbourhood() {
   );
 }
 
+const tire = new THREE.MeshStandardMaterial({ color: '#1b1b1c', roughness: 0.9 });
+const carGlass = new THREE.MeshStandardMaterial({ color: '#1f2a33', roughness: 0.08, metalness: 0.6 });
+const chrome = new THREE.MeshStandardMaterial({ color: '#c8c8c8', roughness: 0.25, metalness: 1 });
+const wheelGeom = new THREE.CylinderGeometry(0.33, 0.33, 0.22, 20).rotateZ(Math.PI / 2);
+
+/** Parkerad bil (enkel men proportionerlig: kaross, glastak, hjul, lampor). */
+function Car({ x, z, color, rot = 0 }) {
+  const paintMat = useMemo(() => new THREE.MeshPhysicalMaterial({ color, roughness: 0.3, metalness: 0.5, clearcoat: 1, clearcoatRoughness: 0.15 }), [color]);
+  return (
+    <group position={[x, 0, z]} rotation-y={rot}>
+      <RoundedBox args={[4.3, 0.75, 1.8]} radius={0.22} smoothness={4} position-y={0.62} material={paintMat} />
+      <RoundedBox args={[2.4, 0.6, 1.62]} radius={0.22} smoothness={4} position={[-0.2, 1.22, 0]} material={carGlass} />
+      {[[-1.35, 0.9], [1.35, 0.9], [-1.35, -0.9], [1.35, -0.9]].map(([wx, wz], i) => (
+        <mesh key={i} geometry={wheelGeom} material={tire} position={[wx, 0.33, wz]} rotation-y={Math.PI / 2} />
+      ))}
+      {[-0.65, 0.65].map((wz) => (
+        <mesh key={wz} position={[2.16, 0.72, wz]} material={chrome}>
+          <boxGeometry args={[0.02, 0.12, 0.32]} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+const planterMat = new THREE.MeshStandardMaterial({ color: '#8f8c86', roughness: 0.85 });
+const bushMat = new THREE.MeshStandardMaterial({ color: '#4f6e3a', roughness: 0.95 });
+function Planter({ x, z, w = 3 }) {
+  return (
+    <group position={[x, 0, z]}>
+      <mesh position-y={0.3} material={planterMat}>
+        <boxGeometry args={[w, 0.6, 1.1]} />
+      </mesh>
+      {Array.from({ length: Math.round(w / 0.6) }, (_, i) => (
+        <mesh key={i} position={[-w / 2 + 0.35 + i * 0.6, 0.72, (i % 2) * 0.15 - 0.07]} material={bushMat} scale={[1, 0.75, 1]}>
+          <icosahedronGeometry args={[0.42, 1]} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function BikeRack({ x, z }) {
+  return (
+    <group position={[x, 0, z]}>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <mesh key={i} position={[i * 0.7, 0.45, 0]} material={steel}>
+          <torusGeometry args={[0.38, 0.025, 6, 16, Math.PI]} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** Flaggstång med vit Gina Tricot-flagga. */
+function Flag({ x, z }) {
+  const logo = useLogoTexture({ background: '#ffffff', height: 256, padding: 30 });
+  const cloth = useMemo(() => {
+    const g = new THREE.PlaneGeometry(1.8, 0.9, 16, 4);
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) p.setZ(i, Math.sin((p.getX(i) + 0.9) * 3) * 0.08 * (p.getX(i) + 0.9) / 1.8);
+    g.computeVertexNormals();
+    return g;
+  }, []);
+  return (
+    <group position={[x, 0, z]}>
+      <mesh position-y={4.5} material={chrome}>
+        <cylinderGeometry args={[0.04, 0.05, 9, 10]} />
+      </mesh>
+      <mesh geometry={cloth} position={[0.92, 8.3, 0]}>
+        <meshStandardMaterial key={logo ? 'l' : 'n'} map={logo} color="#ffffff" side={THREE.DoubleSide} roughness={0.8} />
+      </mesh>
+    </group>
+  );
+}
+
 export default function Exterior() {
   const W = maxX - minX, D = maxZ - minZ;
   const upper = ROOF - H; // fasadens höjd ovanför entréplanets skyltfönster
@@ -297,6 +373,15 @@ export default function Exterior() {
         <boxGeometry args={[0.9, ROOF, 0.4]} />
       </mesh>
       <Street />
+      {/* parkerade bilar längs gatan */}
+      {[[-26, '#20242a'], [-19.5, '#c9ccd0'], [-6, '#7d1f24'], [8, '#f2f2f0'], [21, '#2f3c52'], [27.5, '#5a5d61']].map(([x, c]) => (
+        <Car key={x} x={x} z={maxZ + 15.3} color={c} />
+      ))}
+      <Car x={3} z={maxZ + 20.6} color="#b8bcc2" rot={Math.PI} />
+      {/* planteringar, cykelställ och flaggor på torget */}
+      {[-18, -12.5, 12.5, 18].map((x) => <Planter key={x} x={x} z={maxZ + 11.2} />)}
+      <BikeRack x={minX + 2} z={maxZ + 1.6} />
+      {[-4.5, -2.5].map((x) => <Flag key={x} x={maxX + 2 + (x + 4.5)} z={maxZ + 1.5} />)}
       <Neighbourhood />
       {/* gata och gräsremsa framför torget */}
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.004, maxZ + 18]} material={asphalt} raycast={() => null}>
