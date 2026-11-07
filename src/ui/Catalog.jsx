@@ -7,7 +7,7 @@ import { PATHS } from '../config/storeConfig.js';
 
 const CAT_NAMES = {
   all: 'Allt', tops: 'Toppar', knitwear: 'Stickat', trousers: 'Byxor', jeans: 'Jeans', dresses: 'Klänningar',
-  skirts: 'Kjolar', outerwear: 'Ytterkläder', bags: 'Väskor', shoes: 'Skor', accessories: 'Accessoarer',
+  skirts: 'Kjolar', outerwear: 'Ytterkläder', bags: 'Väskor', shoes: 'Skor', accessories: 'Accessoarer', missy: 'Miss Y',
 };
 const PAGE = 48;
 

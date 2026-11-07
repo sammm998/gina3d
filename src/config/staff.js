@@ -16,7 +16,7 @@ export const STAFF = [
   {
     // står alltid i kassan på plan 1
     id: 'maja', voice: 'sage', name: 'Maja', model: '/assets/models/staff-maja.glb', level: 0, zones: ['checkout'],
-    fixed: { x: -1.8, z: -8.22, yaw: 0 },
+    fixed: { x: -2.7, z: -12.33, yaw: 0 },
     greeting: 'Hej och välkommen till kassan! Jag hjälper dig gärna med kundkorgen, provrummet bredvid eller frågor om storlekar och returer.',
   },
   {
@@ -40,7 +40,7 @@ export const STAFF = [
 // Gina Lounge (plan 4): värdinnan står vid baren
 STAFF.push({
   id: 'alva', voice: 'shimmer', name: 'Alva', model: '/assets/models/staff-alva.glb', level: 3, zones: ['lounge'],
-  fixed: { x: -14.2, z: 1.2, yaw: Math.PI / 2 },
+  fixed: { x: -21.3, z: 1.8, yaw: Math.PI / 2 },
   greeting: 'Välkommen till Gina Lounge! Catwalken visar säsongens favoriter – fråga mig om något plagg du ser, så hjälper jag dig.',
 });
 

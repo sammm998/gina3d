@@ -5,6 +5,7 @@ import { FLOOR_H, LAYOUT_SCALE, LEVELS, STORE, TOP_Y, ceilingHoleOf, floorHoleOf
 import { useStore } from '../state/useStore.js';
 import { floorTexture, glowTexture, mallFloorTexture } from './textures.js';
 import { MAT } from './materials.js';
+import Exterior from './Exterior.jsx';
 
 const { minX, maxX, minZ, maxZ, height: H, door } = STORE;
 const W = maxX - minX;
@@ -181,7 +182,7 @@ function CeilingDetails({ level, y }) {
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [level]);
-  const vents = useMemo(() => [[-9.8, -4.3], [-1.9, 3.4], [5.0, -4.1], [-6.0, 6.2], [9.1, 6.5]].filter(([x, z]) => !inHole(x, z, 0.8)), [level]); // eslint-disable-line react-hooks/exhaustive-deps
+  const vents = useMemo(() => [[-8.2, -3.6], [-1.6, 2.8], [4.2, -3.4], [-5.0, 5.2], [7.6, 5.4], [-10.5, 1.2], [1.5, -5.6]].map(([x, z]) => [x * LAYOUT_SCALE, z * LAYOUT_SCALE]).filter(([x, z]) => !inHole(x, z, 0.8)), [level]); // eslint-disable-line react-hooks/exhaustive-deps
   const sref = useRef();
   useLayoutEffect(() => {
     const m = new THREE.Matrix4();
@@ -435,7 +436,7 @@ export default function Room() {
       <LightPools />
       <Walls />
       <Facade />
-      <Mall />
+      <Exterior />
     </group>
   );
 }

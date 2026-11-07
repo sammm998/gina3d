@@ -19,7 +19,8 @@ export function placeProducts(products, fixtures) {
   const garments = products.filter((p) => !isAccessory(p));
   const accessories = products.filter(isAccessory);
   const byZone = {};
-  for (const p of products) (byZone[zoneForCategory(p.category)] ??= []).push(p);
+  // Miss Y-plagg har en egen avdelning (line: 'missy')
+  for (const p of products) (byZone[p.line === 'missy' ? 'missy' : zoneForCategory(p.category)] ??= []).push(p);
 
   const counters = new Map();
   const next = (key, list) => {

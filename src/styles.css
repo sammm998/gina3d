@@ -367,3 +367,8 @@ a.btn { text-decoration: none; }
 .chat__micerr { position: absolute; bottom: 64px; left: 16px; right: 16px; color: #a3261b; font-size: 12px; margin: 0; }
 .online-badge { position: fixed; left: 18px; top: 64px; z-index: 30; display: flex; align-items: center; gap: 8px; background: var(--overlay); backdrop-filter: blur(8px); padding: 7px 12px; font-size: 12px; border-radius: 999px; }
 .online-badge__dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2); }
+.runway-card { background: rgba(255, 255, 255, 0.95); padding: 8px 10px; min-width: 190px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); transition: opacity 0.4s; font-family: var(--font); }
+.runway-card__eyebrow { margin: 0 0 6px; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.runway-card__item { display: flex; gap: 8px; align-items: center; width: 100%; background: none; border: 0; padding: 3px 0; cursor: pointer; text-align: left; }
+.runway-card__item img { width: 34px; height: 44px; object-fit: contain; background: var(--cream); }
+.runway-card__item span { display: flex; flex-direction: column; font-size: 11px; line-height: 1.3; }

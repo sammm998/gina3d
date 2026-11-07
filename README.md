@@ -310,6 +310,17 @@ sidohängda plagg får tyg och färg utsnittade ur fotot.
   klänning, och justerar varje plagg för sig. **Prova direkt här** öppnar provningen på plats.
 - Köpet görs på ginatricot.com: korgen länkar till varje produktsida.
 
+## Miss Y (plan 3)
+
+Miss Y har en egen avdelning på plan 3 (bakväggen till vänster, med skylt). Plaggen importeras
+från ginatricot.com/se/miss-y (`missy` i `GT_IMPORT_PLAN`) och syns även i katalogen.
+
+## Utsidan
+
+Byggnaden är inspirerad av Gina Tricots huvudkontor: frostade glaspaneler i rutnät, en svart
+vertikal slits och den lodräta svarta logotypen. Framför ligger ett stenlagt torg med
+betongbänkar, gatlyktor, björkar och blå himmel. Varje våning är 45 × 27 m.
+
 ## Gina Lounge (plan 4)
 
 Översta våningen nås med en tredje rulltrappa. Där finns en catwalk där fem modeller (tre blonda,

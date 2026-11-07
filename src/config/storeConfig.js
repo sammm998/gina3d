@@ -1,25 +1,25 @@
 /**
  * Grundläggande mått och sökvägar för butiken.
  * Koordinatsystem: meter. x = vänster/höger, z = djup (entrén ligger vid +z), y = upp.
- * Butiken är 30 × 18 m och centrerad kring origo.
+ * Butiken är 45 × 27 m och centrerad kring origo.
  */
 /** Skala för inredningens placering (layouten ritades för 25 × 15 m och flyttas ut i proportion). */
-export const LAYOUT_SCALE = 1.2;
+export const LAYOUT_SCALE = 1.8;
 /** Ursprungliga mått som layouten i fixtures.js/zones.js är skriven för. */
 export const LAYOUT_BASE = { minX: -12.5, maxX: 12.5, minZ: -7.5, maxZ: 7.5 };
 export const STORE = {
-  width: 30,
-  depth: 18,
+  width: 45,
+  depth: 27,
   height: 3.5,
-  minX: -15,
-  maxX: 15,
-  minZ: -9,
-  maxZ: 9,
+  minX: -22.5,
+  maxX: 22.5,
+  minZ: -13.5,
+  maxZ: 13.5,
   wallThickness: 0.2,
   /** Dörröppningen i glasfasaden (x-intervall). */
   door: { minX: -1.8, maxX: 1.8 },
   /** Gallerian utanför butiken där besökaren startar. */
-  outside: { minX: -14.5, maxX: 14.5, maxZ: 15 },
+  outside: { minX: -22, maxX: 22, maxZ: 19.5 },
 };
 
 export const PLAYER = {
@@ -27,7 +27,7 @@ export const PLAYER = {
   radius: 0.3,
   walkSpeed: 2.2,
   runSpeed: 4.2,
-  start: { x: 0, z: 13.7, yaw: 0, pitch: 0.06 },
+  start: { x: 0, z: 18.3, yaw: 0, pitch: 0.06 },
 };
 
 export const PATHS = {
@@ -79,17 +79,17 @@ export const TOP_Y = (LEVELS.length - 1) * FLOOR_H + STORE.height; // översta t
 const RUN = { zEntry: -6.4, zBottom: -5.2, zTop: 1.73, zExit: 2.9, rise: FLOOR_H, speed: 0.5 };
 export const ESCALATORS = [
   {
-    id: 'e1', fromLevel: 0, minX: 11.08, maxX: 13.88, divider: 12.48, ...RUN,
-    lanes: [{ id: 'up', x: 11.78, dir: 1 }, { id: 'down', x: 13.18, dir: -1 }],
+    id: 'e1', fromLevel: 0, minX: 17.32, maxX: 20.12, divider: 18.72, ...RUN,
+    lanes: [{ id: 'up', x: 18.02, dir: 1 }, { id: 'down', x: 19.42, dir: -1 }],
   },
   {
-    id: 'e2', fromLevel: 1, minX: 7.48, maxX: 10.28, divider: 8.88, ...RUN,
-    lanes: [{ id: 'up', x: 8.18, dir: 1 }, { id: 'down', x: 9.58, dir: -1 }],
+    id: 'e2', fromLevel: 1, minX: 11.92, maxX: 14.72, divider: 13.32, ...RUN,
+    lanes: [{ id: 'up', x: 12.62, dir: 1 }, { id: 'down', x: 14.02, dir: -1 }],
   },
   {
     // till Gina Lounge (plan 4)
-    id: 'e3', fromLevel: 2, minX: 11.08, maxX: 13.88, divider: 12.48, ...RUN,
-    lanes: [{ id: 'up', x: 11.78, dir: 1 }, { id: 'down', x: 13.18, dir: -1 }],
+    id: 'e3', fromLevel: 2, minX: 17.32, maxX: 20.12, divider: 18.72, ...RUN,
+    lanes: [{ id: 'up', x: 18.02, dir: 1 }, { id: 'down', x: 19.42, dir: -1 }],
   },
 ];
 /** Bakåtkompatibelt: den första rulltrappan. */

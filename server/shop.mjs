@@ -150,7 +150,7 @@ async function readJson(req, max = 20000) {
   return JSON.parse(body || '{}');
 }
 
-const CATEGORIES = ['tops', 'knitwear', 'trousers', 'jeans', 'dresses', 'skirts', 'outerwear', 'bags', 'shoes', 'accessories'];
+const CATEGORIES = ['tops', 'knitwear', 'trousers', 'jeans', 'dresses', 'skirts', 'outerwear', 'missy', 'bags', 'shoes', 'accessories'];
 
 export async function handleShop(req, res) {
   const url = new URL(req.url, 'http://x');

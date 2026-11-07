@@ -100,6 +100,16 @@ export const ZONES = [
     tour: 'Byxor och kostymbyxor i alla passformer.',
   },
   {
+    id: 'missy',
+    level: 2,
+    name: 'Miss Y',
+    color: '#f2e2e6',
+    rect: [-7, -7.5, 0, -3.5],
+    categories: [],
+    viewpoint: { x: -3.4, z: -1.2, lookAt: [-3.4, -7] },
+    tour: 'Miss Y – Gina Tricots linje för tjejer: plagg från ginatricot.com/se/miss-y.',
+  },
+  {
     id: 'lounge',
     level: 3,
     name: 'Gina Lounge',

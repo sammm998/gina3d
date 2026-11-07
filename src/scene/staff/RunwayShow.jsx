@@ -1,6 +1,9 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useGLTF } from '@react-three/drei';
+import { Html, useGLTF } from '@react-three/drei';
+import { useStore } from '../../state/useStore.js';
+import { formatPrice } from '../../i18n/index.js';
+import { garmentClass } from '../../data/productMeta.js';
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { FIXTURES } from '../../config/fixtures.js';
@@ -27,7 +30,7 @@ function useRunway() {
   }, []);
 }
 
-function RunwayModel({ url, index, path }) {
+function RunwayModel({ url, index, path, look }) {
   const { scene, animations } = useGLTF(url);
   const model = useMemo(() => cloneSkinned(scene), [scene]);
   const mixer = useMemo(() => new THREE.AnimationMixer(model), [model]);
@@ -39,6 +42,7 @@ function RunwayModel({ url, index, path }) {
   }, [scene]);
   const g = useRef();
   const cur = useRef('');
+  const card = useRef();
   useEffect(() => {
     model.traverse((o) => { if (o.isMesh) o.frustumCulled = false; });
     if (actions.Walk) actions.Walk.timeScale = SPEED / walkSpeed;
@@ -64,6 +68,8 @@ function RunwayModel({ url, index, path }) {
       visible = false; z = path.zBack; yaw = 0; anim = 'Idle';
     }
     g.current.visible = visible;
+    // produktkortet syns medan modellen är ute på catwalken
+    if (card.current) card.current.style.opacity = visible && t < 2 * walkT + POSE ? '1' : '0';
     if (!visible) return;
     if (anim !== cur.current && actions[anim]) {
       actions[cur.current]?.fadeOut(0.35);
@@ -77,6 +83,19 @@ function RunwayModel({ url, index, path }) {
   return (
     <group ref={g} visible={false}>
       <primitive object={model} />
+      {look.length > 0 && (
+        <Html position={[0, 2.15, 0]} center distanceFactor={7} zIndexRange={[20, 0]}>
+          <div ref={card} className="runway-card" style={{ opacity: 0 }}>
+            <p className="runway-card__eyebrow">På catwalken</p>
+            {look.map((p) => (
+              <button key={p.id} className="runway-card__item" onClick={() => useStore.getState().select(p.id)}>
+                {p.images?.[0] && <img src={p.tryOnImage || p.images[0]} alt="" />}
+                <span><strong>{p.name}</strong><span>{formatPrice(p.price, p.currency)}</span></span>
+              </button>
+            ))}
+          </div>
+        </Html>
+      )}
     </group>
   );
 }
@@ -102,12 +121,20 @@ export default function RunwayShow() {
   useFrame(() => {
     if (!on && (player.level === 3 || (player.mode === 'ramp' && player.level === 2))) setOn(true);
   });
+  const products = useStore((s) => s.products);
+  // varje modell visar en look ur sortimentet (en klänning, eller topp + underdel)
+  const looks = useMemo(() => {
+    const g = products.filter((p) => p.tryOnImage && garmentClass(p) !== 'accessory');
+    const by = (c) => g.filter((p) => garmentClass(p) === c);
+    const full = by('full'), up = [...by('upper'), ...by('outer')], low = [...by('lower'), ...by('skirt')];
+    return MODELS.map((_, i) => (i % 2 === 0 && full.length ? [full[(i / 2) % full.length]] : [up[i % (up.length || 1)], low[i % (low.length || 1)]].filter(Boolean)));
+  }, [products]);
   if (!path || !on) return null;
   return (
     <group>
       {MODELS.map((url, i) => (
         <Suspense key={url} fallback={null}>
-          <RunwayModel url={url} index={i} path={path} />
+          <RunwayModel url={url} index={i} path={path} look={looks[i] ?? []} />
         </Suspense>
       ))}
       {/* varmt scenljus längs catwalken */}

@@ -223,7 +223,10 @@ const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'im
 async function importOne({ url, category }, args, canCutout) {
   const html = await fetchText(url);
   const p = parseProduct(html, url);
-  const cat = args.category || category || guessCategory(p.breadcrumb, new URL(url).pathname, p.name);
+  let cat = args.category || category || guessCategory(p.breadcrumb, new URL(url).pathname, p.name);
+  // Miss Y: egen avdelning, men plaggtypen (jeans, toppar …) behövs för visning och provning
+  const line = cat === 'missy' ? 'missy' : null;
+  if (line) cat = categoryOfUrl(url.replace('/miss-y/', '/')) ?? guessCategory(p.breadcrumb, new URL(url).pathname.replace('/miss-y/', '/'), p.name) ?? 'tops';
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const images = [];
   const files = [];
@@ -307,6 +310,7 @@ async function importOne({ url, category }, args, canCutout) {
     images,
     tryOnImage,
     productUrl: p.productUrl,
+    ...(line ? { line } : {}),
   };
   if (!tryOnImage && !accessory) entry.tryOnType = 'none';
   if (anchorsOut) entry.tryOnAnchors = anchorsOut;
@@ -371,6 +375,7 @@ export async function productUrlsFromSitemap(indexUrl, { verbose = false } = {})
 
 /** Vilken butikskategori en produkt-URL hör till (svenska URL-delar på ginatricot.com). */
 const URL_CATEGORIES = [
+  ['missy', /\/miss-y\//],
   ['jeans', /\/klader\/jeans\//],
   ['dresses', /\/klader\/kl[aä]nningar(jumpsuits)?\//],
   ['skirts', /\/klader\/kjolar\//],
@@ -381,7 +386,7 @@ const URL_CATEGORIES = [
   ['bags', /\/accessoarer\/v[aä]skor(planbocker)?\//],
   ['shoes', /\/accessoarer\/skor\//],
 ];
-const EXCLUDE = /young|miss-y|underkl|badkl|strumpor|pyjamas|sovplagg|slippers|tofflor/;
+const EXCLUDE = /young|underkl|badkl|strumpor|pyjamas|sovplagg|slippers|tofflor/;
 
 const pathOf = (u) => {
   try { return decodeURIComponent(new URL(u).pathname).toLowerCase(); } catch { return ''; }
@@ -404,7 +409,7 @@ function writeCatalog(pages) {
   for (const u of pages) {
     if (!isProductUrl(u)) continue;
     const p = pathOf(u);
-    if (/young|miss-y/.test(p)) continue;
+    if (/young/.test(p)) continue;
     const slug = p.split('/').pop();
     const num = (slug.match(/-(\d{6,})$/) || [])[1];
     const words = slug.replace(/-\d+$/, '').replace(/-/g, ' ').trim();
