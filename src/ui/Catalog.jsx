@@ -29,12 +29,15 @@ export default function Catalog() {
   const [aiQ, setAiQ] = useState('');
   const [ai, setAi] = useState(null); // { summary, items }
   const [aiBusy, setAiBusy] = useState(false);
-  const runAi = async (e) => {
+  const runAi = (e) => {
     e?.preventDefault();
-    if (!aiQ.trim()) return;
+    runAiWith(aiQ);
+  };
+  const runAiWith = async (text) => {
+    if (!text.trim()) return;
     setAiBusy(true);
     try {
-      const r = await fetch(`/api/catalog/ai?q=${encodeURIComponent(aiQ)}`);
+      const r = await fetch(`/api/catalog/ai?q=${encodeURIComponent(text)}`);
       const j = await r.json();
       setAi(r.ok ? j : { summary: j.error || 'Sökningen fungerade inte.', items: [] });
     } catch {
@@ -94,17 +97,34 @@ export default function Catalog() {
       <section className="catalog__intro">
         <h1>Katalog</h1>
         <p>Hela sortimentet från ginatricot.com – {data.all ? `${data.all.toLocaleString('sv-SE')} produkter` : 'laddar …'}.</p>
-        <form className="catalog__ai" onSubmit={runAi}>
-          <span className="catalog__ai-badge">AI</span>
-          <input value={aiQ} onChange={(e) => setAiQ(e.target.value)} placeholder="Beskriv vad du letar efter, t.ex. ”något svart och festligt till nyår under 400 kr”" aria-label="AI-sökning" />
-          <button className="btn btn--primary" disabled={aiBusy || !aiQ.trim()}>{aiBusy ? 'Letar …' : 'Hitta förslag'}</button>
-        </form>
-        {ai && (
-          <div className="catalog__ai-result">
-            <span>{ai.summary} {ai.items.length ? `(${ai.items.length} förslag)` : '– inga träffar, prova att beskriva på ett annat sätt.'}</span>
-            <button className="btn btn--ghost-plain" onClick={() => { setAi(null); setAiQ(''); }}>Visa hela katalogen</button>
+        <section className="aisearch">
+          <div className="aisearch__head">
+            <span className="aisearch__spark" aria-hidden>✦</span>
+            <div>
+              <p className="aisearch__title">Personlig stylist</p>
+              <p className="aisearch__sub">Beskriv vad du letar efter – plaggtyp, färg, tillfälle eller budget – så hittar vi förslag åt dig.</p>
+            </div>
           </div>
-        )}
+          <form className="aisearch__form" onSubmit={runAi}>
+            <input value={aiQ} onChange={(e) => setAiQ(e.target.value)} placeholder="T.ex. ”något svart och kort till nyår under 400 kr”" aria-label="Beskriv vad du letar efter" />
+            <button className="btn btn--primary" disabled={aiBusy || !aiQ.trim()}>{aiBusy ? 'Letar …' : 'Hitta förslag'}</button>
+          </form>
+          {!ai && !aiBusy && (
+            <div className="aisearch__examples">
+              {['Något svart och kort', 'Vida jeans i ljus tvätt', 'Mysig stickad tröja i beige', 'Festklänning under 500 kr'].map((ex) => (
+                <button key={ex} className="chip" onClick={() => { setAiQ(ex); setTimeout(() => runAiWith(ex), 0); }}>{ex}</button>
+              ))}
+            </div>
+          )}
+          {aiBusy && <div className="aisearch__loading"><span /><span /><span /> Letar i hela sortimentet …</div>}
+          {ai && !aiBusy && (
+            <div className="aisearch__result">
+              <p>{ai.summary} {ai.items.length ? <strong>{ai.items.length} förslag</strong> : '– inga träffar, prova att beskriva på ett annat sätt.'}</p>
+              {ai.filters?.length > 0 && <div className="aisearch__filters">{ai.filters.map((f) => <span key={f}>{f}</span>)}</div>}
+              <button className="btn btn--ghost-plain" onClick={() => { setAi(null); setAiQ(''); }}>Visa hela katalogen</button>
+            </div>
+          )}
+        </section>
         <input className="catalog__search" type="search" placeholder="Sök, t.ex. ”svart klänning” eller ”jeans”" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Sök i katalogen" />
         <div className="catalog__chips" role="tablist">
           {[{ id: 'all' }, ...data.categories].map((c) => (

@@ -289,7 +289,7 @@ async function interpret(q) {
         temperature: 0,
         response_format: { type: 'json_object' },
         messages: [
-          { role: 'system', content: 'Du tolkar en kunds beskrivning av kläder hos Gina Tricot. Svara med JSON: {"categories": [...] (av: tops, knitwear, trousers, jeans, dresses, skirts, outerwear, bags, shoes, missy), "keywords": [engelska ord som kan finnas i produktnamn, t.ex. "satin","maxi","black","wide","tank"], "max_price": tal eller 0, "summary": kort svensk mening om vad du letar efter}.' },
+          { role: 'system', content: 'Du tolkar en kunds beskrivning av kläder hos Gina Tricot. Svara med JSON: {"categories": [...] (av: tops, knitwear, trousers, jeans, dresses, skirts, outerwear, bags, shoes, missy), "keywords": [engelska ord som kan finnas i produktnamn, t.ex. "satin","maxi","black","wide","tank"], "colors": [engelska färgord som plagget MÅSTE ha, t.ex. "black","white","beige","blue","red","green","pink","grey","brown"; tom lista om ingen färg nämns], "max_price": tal eller 0, "summary": kort svensk mening om vad du letar efter}.' },
           { role: 'user', content: q },
         ],
       }),
@@ -301,25 +301,62 @@ async function interpret(q) {
   }
 }
 
+const COLOR_WORDS = {
+  black: ['black', 'svart'], white: ['white', 'vit', 'offwhite', 'off-white', 'ivory'], beige: ['beige', 'sand', 'camel', 'cream', 'kräm'],
+  blue: ['blue', 'blå', 'navy', 'denim'], red: ['red', 'röd', 'burgundy', 'wine'], green: ['green', 'grön', 'khaki', 'olive'],
+  pink: ['pink', 'rosa', 'rose'], grey: ['grey', 'gray', 'grå', 'melange'], brown: ['brown', 'brun', 'chocolate', 'mocha'],
+};
+const SV_COLOR = { svart: 'black', svarta: 'black', vit: 'white', vita: 'white', beige: 'beige', bla: 'blue', blaa: 'blue', rod: 'red', roda: 'red', gron: 'green', grona: 'green', rosa: 'pink', gra: 'grey', graa: 'grey', brun: 'brown', bruna: 'brown' };
+const COLOR_SV = { black: 'svart', white: 'vitt', beige: 'beige', blue: 'blått', red: 'rött', green: 'grönt', pink: 'rosa', grey: 'grått', brown: 'brunt' };
+
+function colorOk(c, d, colors) {
+  if (!colors.length) return true;
+  // plaggets egen färg: namnet eller första färgen (den som syns på bilden) – inte alla färgvarianter
+  const text = norm(`${d?.colors?.[0] || ''} ${d?.name || c.name}`);
+  return colors.some((col) => (COLOR_WORDS[col] || [col]).some((w) => text.includes(norm(w))));
+}
+
 async function aiSearch(res, q) {
   if (!q.trim()) return send(res, 400, { error: 'Beskriv vad du letar efter.' });
   const ai = await interpret(q);
   const pq = parseQuery(q);
   const cats = (ai?.categories?.length ? ai.categories : pq.categories).filter((c) => CATEGORIES.includes(c));
-  const terms = [...new Set([...(ai?.keywords || []).map((k) => norm(k)), ...pq.typeTerms, ...pq.nameTerms, ...pq.freeTerms])].filter((t) => t.length > 1);
+  const qColors = norm(q).split(/[^a-z]+/).map((w) => SV_COLOR[w]).filter(Boolean);
+  const colors = [...new Set([...(ai?.colors || []).map((c) => norm(c)).filter((c) => COLOR_WORDS[c]), ...qColors])];
+  const colorTerms = new Set(Object.values(COLOR_WORDS).flat().map(norm));
+  const terms = [...new Set([...(ai?.keywords || []).map((k) => norm(k)), ...pq.typeTerms, ...pq.nameTerms, ...pq.freeTerms])].filter((t) => t.length > 1 && !colorTerms.has(t));
   const maxPrice = Number(ai?.max_price) || Number((q.match(/(?:under|max|högst)\s*(\d{2,5})/i) || [])[1]) || 0;
+  // 1) kandidater efter kategori och ord i namnet
   const scored = [];
   for (const c of catalog) {
     if (cats.length && !cats.includes(c.category)) continue;
     const d = details.get(c.id);
-    if (maxPrice && d?.price && d.price > maxPrice) continue;
     const words = norm(`${d?.name || c.name}`).split(/[^a-z0-9]+/);
     const hits = terms.filter((t) => words.some((w) => w === t || (t.length >= 4 && w.startsWith(t)))).length;
-    if (!hits && !cats.length) continue;
-    scored.push({ c, s: hits * 2 + (d?.image ? 0.5 : 0) + (c.inStore ? 0.3 : 0) });
+    if (!hits && !cats.length && !colors.length) continue;
+    scored.push({ c, hits, s: hits * 2 + (d ? 0.5 : 0) + (colorOk(c, d, colors) && d ? 2 : 0) });
   }
   scored.sort((a, b) => b.s - a.s);
-  const items = scored.slice(0, 24).map((x) => view(x.c));
-  const summary = ai?.summary || (cats.length ? `Förslag bland ${cats.map((c) => CAT_SV[c] || c).join(' och ')}${terms.length ? ` som matchar ”${terms.slice(0, 4).join(', ')}”` : ''}.` : `Förslag som matchar ”${q}”.`);
-  return send(res, 200, { summary, items, ai: !!ai });
+  // 2) färg och pris är krav – hämta detaljer för kandidaterna som ännu saknar dem
+  const pool = scored.slice(0, colors.length || maxPrice ? 90 : 30);
+  const missing = pool.filter((x) => !details.has(x.c.id) && /^https:\/\/www\.ginatricot\.com\//.test(x.c.url)).slice(0, 48);
+  await Promise.race([Promise.all(missing.map((x) => fetchDetails(x.c, true))), new Promise((r) => setTimeout(r, 12000))]);
+  let kept = pool
+    .filter(({ c }) => {
+      const d = details.get(c.id);
+      if (colors.length && !(d && colorOk(c, d, colors))) return false;
+      if (maxPrice && !(d?.price && d.price <= maxPrice)) return false;
+      return true;
+    });
+  // beskrivande ord (kort, vid, satin …): visa bara träffar på dem om det finns några
+  if (terms.length && kept.some((x) => x.hits > 0)) kept = kept.filter((x) => x.hits > 0);
+  const items = kept.slice(0, 24).map((x) => view(x.c));
+  const filters = [
+    ...cats.map((c) => CAT_SV[c] || c),
+    ...colors.map((c) => COLOR_SV[c] || c),
+    ...(maxPrice ? [`under ${maxPrice} kr`] : []),
+    ...terms.slice(0, 3),
+  ];
+  const summary = ai?.summary || `Förslag${filters.length ? ': ' + filters.join(' · ') : ` som matchar ”${q}”`}.`;
+  return send(res, 200, { summary, filters, items, ai: !!ai });
 }
