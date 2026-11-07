@@ -33,6 +33,10 @@ function staticRootDirs() {
         const { handleChat } = await import(/* @vite-ignore */ pathToFileURL(path.resolve('server/chat.mjs')).href);
         handleChat(req, res);
       });
+      server.middlewares.use('/api/voice', async (req, res) => {
+        const { handleVoice } = await import(/* @vite-ignore */ pathToFileURL(path.resolve('server/chat.mjs')).href);
+        handleVoice(req, res);
+      });
       // katalog och kassa i dev-läge
       let shop = null;
       const shopHandler = async (req, res) => {

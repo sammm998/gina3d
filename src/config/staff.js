@@ -6,33 +6,33 @@
  */
 export const STAFF = [
   {
-    id: 'emma', name: 'Emma', model: '/assets/models/staff-emma.glb', level: 0, zones: ['entrance', 'tops', 'denim'],
+    id: 'emma', voice: 'coral', name: 'Emma', model: '/assets/models/staff-emma.glb', level: 0, zones: ['entrance', 'tops', 'denim'],
     greeting: 'Hej, jag heter Emma! Letar du efter något särskilt? Fråga mig om plagg, storlekar eller var du hittar saker.',
   },
   {
-    id: 'mike', name: 'Mike', model: '/assets/models/staff-mike.glb', level: 0, zones: ['accessories', 'outerwear', 'checkout'],
+    id: 'mike', voice: 'ash', name: 'Mike', model: '/assets/models/staff-mike.glb', level: 0, zones: ['accessories', 'outerwear', 'checkout'],
     greeting: 'Hej, Mike här! Behöver du hjälp att hitta en jacka, en väska eller rätt storlek?',
   },
   {
     // står alltid i kassan på plan 1
-    id: 'maja', name: 'Maja', model: '/assets/models/staff-maja.glb', level: 0, zones: ['checkout'],
-    fixed: { x: -1.5, z: -6.85, yaw: 0 },
+    id: 'maja', voice: 'sage', name: 'Maja', model: '/assets/models/staff-maja.glb', level: 0, zones: ['checkout'],
+    fixed: { x: -1.8, z: -8.22, yaw: 0 },
     greeting: 'Hej och välkommen till kassan! Jag hjälper dig gärna med kundkorgen, provrummet bredvid eller frågor om storlekar och returer.',
   },
   {
-    id: 'sara', name: 'Sara', model: '/assets/models/staff-sara.glb', level: 1, zones: ['dresses', 'party'],
+    id: 'sara', voice: 'shimmer', name: 'Sara', model: '/assets/models/staff-sara.glb', level: 1, zones: ['dresses', 'party'],
     greeting: 'Hej, jag är Sara! Ska du på fest eller söker du en vardagsklänning? Jag hjälper gärna till.',
   },
   {
-    id: 'noah', name: 'Noah', model: '/assets/models/staff-noah.glb', level: 1, zones: ['party', 'dresses'],
+    id: 'noah', voice: 'verse', name: 'Noah', model: '/assets/models/staff-noah.glb', level: 1, zones: ['party', 'dresses'],
     greeting: 'Hej, jag heter Noah! Letar du efter något till festen eller säsongens nyheter? Säg till så visar jag.',
   },
   {
-    id: 'ella', name: 'Ella', model: '/assets/models/staff-ella.glb', level: 2, zones: ['trousers', 'knit'],
+    id: 'ella', voice: 'nova', name: 'Ella', model: '/assets/models/staff-ella.glb', level: 2, zones: ['trousers', 'knit'],
     greeting: 'Hej, Ella här! Jag kan hjälpa dig att hitta rätt passform på byxor eller en mysig stickad tröja.',
   },
   {
-    id: 'linnea', name: 'Linnéa', model: '/assets/models/staff-linnea.glb', level: 2, zones: ['knit', 'trousers'],
+    id: 'linnea', voice: 'ballad', name: 'Linnéa', model: '/assets/models/staff-linnea.glb', level: 2, zones: ['knit', 'trousers'],
     greeting: 'Hej, Linnéa här! Fråga mig gärna om stickat, byxor och passformer.',
   },
 ];

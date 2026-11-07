@@ -49,9 +49,10 @@ function BakedShadows() {
     <ContactShadows
       key={`${version}-${y}`}
       frames={1}
-      position={[0, y + 0.003, y ? 0 : 2.4]}
-      scale={y ? [26, 15.6] : [26, 20.4]}
-      resolution={1024}
+      // entréplanet tar med gallerian framför butiken
+      position={[0, y + 0.003, y ? 0 : (STORE.minZ - 0.3 + STORE.outside.maxZ) / 2]}
+      scale={y ? [STORE.width + 1, STORE.depth + 0.6] : [STORE.width + 1, STORE.outside.maxZ - STORE.minZ + 0.3]}
+      resolution={1536}
       far={0.7}
       blur={2.4}
       opacity={0.75}

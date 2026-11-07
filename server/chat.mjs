@@ -455,3 +455,75 @@ export async function handleChat(req, res) {
     return send(500, { error: 'Något gick fel i chatten.' });
   }
 }
+
+// ------------------------------------------------------------------ röstsamtal (OpenAI)
+// POST /api/voice { audio: base64, mime, staff, voice, history }
+// Tal -> text (transkribering) -> samma personal och verktyg som chatten -> tal.
+const STT_MODEL = process.env.OPENAI_STT_MODEL || 'gpt-4o-mini-transcribe';
+const TTS_MODEL = process.env.OPENAI_TTS_MODEL || 'gpt-4o-mini-tts';
+const VOICES = new Set(['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'nova', 'onyx', 'sage', 'shimmer', 'verse']);
+
+async function openaiFetch(pathname, init) {
+  const res = await fetch(`https://api.openai.com/v1/${pathname}`, {
+    ...init,
+    headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, ...(init.headers || {}) },
+    signal: AbortSignal.timeout(45000),
+  });
+  if (!res.ok) {
+    const j = await res.json().catch(() => ({}));
+    throw Object.assign(new Error(j?.error?.message || `OpenAI ${res.status}`), { status: res.status });
+  }
+  return res;
+}
+
+export async function handleVoice(req, res) {
+  const send = (code, obj) => {
+    res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify(obj));
+  };
+  if (req.method !== 'POST') return send(405, { error: 'POST krävs' });
+  if (!process.env.OPENAI_API_KEY) return send(503, { error: 'Röstsamtal kräver OPENAI_API_KEY på servern.' });
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || '?';
+  if (rateLimited(ip)) return send(429, { error: 'För många frågor på kort tid – vänta en minut.' });
+  let body = '';
+  for await (const chunk of req) {
+    body += chunk;
+    if (body.length > 8_000_000) return send(413, { error: 'Inspelningen är för lång' });
+  }
+  let data;
+  try {
+    data = JSON.parse(body);
+  } catch {
+    return send(400, { error: 'Ogiltig förfrågan' });
+  }
+  if (!dataDir) initChat(path.resolve('data'));
+  try {
+    // 1) tal -> text
+    const mime = /^audio\/[a-z0-9.+-]+/i.test(data.mime || '') ? data.mime.split(';')[0] : 'audio/webm';
+    const ext = { 'audio/webm': 'webm', 'audio/mp4': 'mp4', 'audio/mpeg': 'mp3', 'audio/ogg': 'ogg', 'audio/wav': 'wav' }[mime] || 'webm';
+    const form = new FormData();
+    form.append('file', new Blob([Buffer.from(String(data.audio || ''), 'base64')], { type: mime }), `tal.${ext}`);
+    form.append('model', STT_MODEL);
+    form.append('language', 'sv');
+    const stt = await (await openaiFetch('audio/transcriptions', { method: 'POST', body: form })).json();
+    const text = String(stt.text || '').trim().slice(0, 1000);
+    if (!text) return send(200, { transcript: '', reply: 'Jag hörde inte riktigt – kan du säga det igen?', cards: [], mode: 'voice' });
+    // 2) samma personal och verktyg som chatten
+    const staff = String(data.staff || '').slice(0, 40);
+    const history = [...sanitizeHistory(data.history), { role: 'user', content: text }];
+    const out = process.env.ANTHROPIC_API_KEY ? await claudeChat(staff, history) : await openaiChat(staff, history);
+    // 3) text -> tal (kort och naturligt: länkar och listtecken läses inte upp)
+    const spoken = out.reply.replace(/https?:\/\/\S+/g, '').replace(/[*#_`>]/g, '').slice(0, 1200);
+    const voice = VOICES.has(data.voice) ? data.voice : 'coral';
+    const tts = await openaiFetch('audio/speech', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: TTS_MODEL, voice, input: spoken, response_format: 'mp3', instructions: 'Tala naturlig, vänlig svenska som en glad och kunnig butiksmedarbetare i en modebutik. Lagom tempo.' }),
+    });
+    const audio = Buffer.from(await tts.arrayBuffer()).toString('base64');
+    return send(200, { ...out, transcript: text, audio, mode: 'voice' });
+  } catch (e) {
+    console.error('Röst:', e.message);
+    return send(502, { error: e.status === 401 ? 'OpenAI-nyckeln godkändes inte.' : 'Röstsamtalet fungerade inte just nu – skriv gärna i stället.' });
+  }
+}

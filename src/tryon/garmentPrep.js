@@ -127,6 +127,21 @@ export function prepareGarment(img, type) {
     if (y < y0) y0 = y;
     if (y > y1) y1 = y;
   }
+  // Galgkrok/upphängning överst i produktbilden: smala rader ovanför plagget tas bort
+  {
+    const fullW = x1 - x0 + 1;
+    const rowW = (y) => {
+      let l = -1, r = -1;
+      for (let x = x0; x <= x1; x++) if (mask[y * w + x]) { if (l < 0) l = x; r = x; }
+      return l < 0 ? 0 : r - l + 1;
+    };
+    let ny = y0;
+    while (ny < y1 && rowW(ny) < fullW * 0.12) ny++;
+    if (ny > y0 && ny - y0 < (y1 - y0) * 0.3) {
+      for (let y = y0; y < ny; y++) for (let x = 0; x < w; x++) { mask[y * w + x] = 0; d[(y * w + x) * 4 + 3] = 0; }
+      y0 = ny;
+    }
+  }
   const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
   // en nästan helt fylld rektangel = bakgrunden blev kvar
   let filled = 0;

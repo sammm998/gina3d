@@ -12,7 +12,11 @@
  *
  * Rotation: 0 = möbelns framsida mot +z (mot entrén), PI/2 = mot +x, -PI/2 = mot −x, PI = mot −z.
  */
-import { FLOOR_H, STORE } from './storeConfig.js';
+import { FLOOR_H, LAYOUT_BASE, LAYOUT_SCALE } from './storeConfig.js';
+
+// Layouten nedan är skriven i de ursprungliga måtten (25 × 15 m) och flyttas sist ut
+// i proportion till butikens verkliga storlek (möblernas egna mått ändras inte).
+const STORE = LAYOUT_BASE;
 
 const R0 = 0;
 const FACE_X = Math.PI / 2;     // framsida mot +x (står mot vänster vägg)
@@ -185,9 +189,10 @@ function gondola(id, zone, x, z, rot = 0, opts = {}) {
       }
     }
   }
-  for (const lx of [-0.5, 0.5]) {
-    const [wx, wz] = toWorld(f, lx * f.w * 0.6, 0);
-    f.slots.push({ kind: 'accessory', pos: [wx, f.h, wz], rot });
+  // överst: två travar vikta plagg (inga lösa accessoarer som ser ut att sväva)
+  for (const lx of [-0.25, 0.25]) {
+    const [wx, wz] = toWorld(f, lx * f.w, 0);
+    f.slots.push({ kind: 'fold', pos: [wx, f.h, wz], rot, maxStack: 4 });
   }
   return f;
 }
@@ -223,7 +228,7 @@ function lightbox(id, wall, along, y, w, h, image) {
 }
 
 /** Provhytternas insida (x0, z0, x1, z1) på entréplan – att kliva in öppnar provningen. */
-export const FITTING_BOOTHS = [
+const BOOTHS_BASE = [
   { id: 'A', rect: [-6.9, STORE.minZ, -5.5, STORE.minZ + 1.45], stand: { x: -6.3, z: STORE.minZ + 0.85 } },
   { id: 'B', rect: [-5.5, STORE.minZ, -4.1, STORE.minZ + 1.45], stand: { x: -4.9, z: STORE.minZ + 0.85 } },
 ];
@@ -245,7 +250,7 @@ function onLevel(level, list) {
 
 const { minX, maxX, minZ } = STORE;
 
-export const FIXTURES = [
+const LAYOUT = [
   // --- Entré: skyltfönster med skyltdockor, podier, skärmar och växter
   platform('win-l', 'entrance', -7.1, 6.85, { w: 6.2 }),
   platform('win-r', 'entrance', 7.1, 6.85, { w: 6.2 }),
@@ -422,3 +427,29 @@ export const FIXTURES = [
     plant('t-plant-4', 'trousers', 0.6, 6.9, 1.0),
   ]),
 ];
+
+/** Flyttar en möbel (med kolliderare, produktplatser och kartfigur) till skalad position. */
+function placeScaled(f) {
+  const k = LAYOUT_SCALE - 1;
+  const dx = (f.x || 0) * k, dz = (f.z || 0) * k;
+  const mv = (r) => (r.rect ? { rect: [r.rect[0] + dx, r.rect[1] + dz, r.rect[2] + dx, r.rect[3] + dz] } : r.circle ? { circle: [r.circle[0] + dx, r.circle[1] + dz, r.circle[2]] } : r);
+  return {
+    ...f,
+    x: (f.x || 0) + dx,
+    z: (f.z || 0) + dz,
+    delta: [dx, dz],
+    colliders: (f.colliders || []).map(mv),
+    map: f.map ? mv(f.map) : f.map,
+    slots: f.slots?.map((sl) => ({ ...sl, pos: [sl.pos[0] + dx, sl.pos[1], sl.pos[2] + dz] })),
+  };
+}
+
+export const FIXTURES = LAYOUT.map(placeScaled);
+
+/** Provhytternas insida (x0, z0, x1, z1) på entréplan – att kliva in öppnar provningen. */
+const fittingDelta = FIXTURES.find((f) => f.id === 'fitting').delta;
+export const FITTING_BOOTHS = BOOTHS_BASE.map((b) => ({
+  ...b,
+  rect: [b.rect[0] + fittingDelta[0], b.rect[1] + fittingDelta[1], b.rect[2] + fittingDelta[0], b.rect[3] + fittingDelta[1]],
+  stand: { x: b.stand.x + fittingDelta[0], z: b.stand.z + fittingDelta[1] },
+}));

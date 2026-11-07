@@ -4,7 +4,7 @@ import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { SHOPPERS, STAFF } from '../../config/staff.js';
-import { FLOOR_H } from '../../config/storeConfig.js';
+import { ESCALATORS, FLOOR_H, STORE, floorHoleOf } from '../../config/storeConfig.js';
 import { zoneById } from '../../config/zones.js';
 import { navGrids } from '../../nav/world.js';
 import { player } from '../../nav/playerState.js';
@@ -42,6 +42,25 @@ function angleDiff(a, b) {
   return d;
 }
 
+/** Områden personalen aldrig går in i: öppningen ovanför en rulltrappa och själva trappan. */
+const NO_GO = {};
+function noGo(level) {
+  if (NO_GO[level]) return NO_GO[level];
+  const rects = floorHoleOf(level).map((V) => [V.minX - 0.5, V.minZ - 0.5, V.maxX + 0.5, V.maxZ + 0.5]);
+  for (const e of ESCALATORS) if (e.fromLevel === level) rects.push([e.minX - 0.3, e.zEntry - 0.4, e.maxX + 0.3, e.zTop + 0.2]);
+  return (NO_GO[level] = rects);
+}
+const blocked = (level, x, z) => noGo(level).some(([x0, z0, x1, z1]) => x > x0 && x < x1 && z > z0 && z < z1);
+/** true om vägen (inkl. mellanpunkter) undviker förbjudna områden. */
+function pathOk(level, from, path) {
+  let prev = from;
+  for (const p of path) {
+    for (let t = 0.25; t <= 1; t += 0.25) if (blocked(level, prev.x + (p.x - prev.x) * t, prev.z + (p.z - prev.z) * t)) return false;
+    prev = p;
+  }
+  return true;
+}
+
 function randomTarget(cfg, from) {
   const grid = navGrids[cfg.level];
   if (!grid) return null;
@@ -50,11 +69,12 @@ function randomTarget(cfg, from) {
     if (!zone) continue;
     const [x0, z0, x1, z1] = zone.rect;
     const x = x0 + 1 + Math.random() * (x1 - x0 - 2);
-    const z = Math.max(z0, -7) + 0.8 + Math.random() * (Math.min(z1, 7) - Math.max(z0, -7) - 1.6);
+    const zl = STORE.minZ + 0.5, zh = STORE.maxZ - 0.5;
+    const z = Math.max(z0, zl) + 0.8 + Math.random() * (Math.min(z1, zh) - Math.max(z0, zl) - 1.6);
     const c = grid.toCell(x, z);
-    if (!grid.free(c.c, c.r)) continue;
+    if (!grid.free(c.c, c.r) || blocked(cfg.level, x, z)) continue;
     const path = grid.findPath(from, { x, z });
-    if (path && path.length) return path;
+    if (path && path.length && pathOk(cfg.level, from, path)) return path;
   }
   return null;
 }
@@ -138,8 +158,8 @@ function StaffMember({ cfg, index }) {
         s.repath = 1;
         const k = 1.3 / (dist || 1);
         const target = { x: player.x - dx * k, z: player.z - dz * k };
-        const path = navGrids[cfg.level].findPath({ x: s.x, z: s.z }, target);
-        if (path?.length) { s.path = path; s.wait = 0; }
+        const path = blocked(cfg.level, target.x, target.z) ? null : navGrids[cfg.level].findPath({ x: s.x, z: s.z }, target);
+        if (path?.length && pathOk(cfg.level, { x: s.x, z: s.z }, path)) { s.path = path; s.wait = 0; }
       }
     }
     if (cfg.fixed) {

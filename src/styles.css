@@ -360,3 +360,8 @@ a.btn { text-decoration: none; }
 .help-offer__text { margin: 0 0 12px; font-size: 15px; line-height: 1.45; }
 .help-offer__actions { display: flex; gap: 8px; flex-wrap: wrap; }
 @keyframes help-in { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.chat__mic { padding: 10px; flex: none; }
+.chat__mic.is-rec { background: #b3261e; border-color: #b3261e; color: #fff; animation: mic-pulse 1.1s infinite; }
+.chat__mic.is-speaking { border-color: var(--black); }
+@keyframes mic-pulse { 50% { box-shadow: 0 0 0 6px rgba(179, 38, 30, 0.2); } }
+.chat__micerr { position: absolute; bottom: 64px; left: 16px; right: 16px; color: #a3261b; font-size: 12px; margin: 0; }

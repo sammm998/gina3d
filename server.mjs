@@ -4,7 +4,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
-import { handleChat, initChat } from './server/chat.mjs';
+import { handleChat, handleVoice, initChat } from './server/chat.mjs';
 import { handleShop, initShop } from './server/shop.mjs';
 
 const DIST = path.resolve('dist');
@@ -24,6 +24,7 @@ initShop(path.join(DIST, 'data'));
 http
   .createServer((req, res) => {
     if (req.url.startsWith('/api/chat')) return void handleChat(req, res);
+    if (req.url.startsWith('/api/voice')) return void handleVoice(req, res);
     if (req.url.startsWith('/api/catalog') || req.url.startsWith('/api/checkout')) return void handleShop(req, res);
     let p;
     try {

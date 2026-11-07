@@ -39,6 +39,49 @@ function Card({ c }) {
   );
 }
 
+/** Tryck för att prata, tryck igen för att skicka. Personalen svarar med röst. */
+function MicButton({ disabled }) {
+  const [rec, setRec] = useState(null);
+  const [err, setErr] = useState('');
+  const speaking = useStore((s) => s.speaking);
+  const start = async () => {
+    setErr('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      const type = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find((t) => window.MediaRecorder?.isTypeSupported?.(t)) || '';
+      const mr = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+      const chunks = [];
+      mr.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+      mr.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunks, { type: mr.mimeType || type || 'audio/webm' });
+        useStore.getState().sendVoice(blob);
+      };
+      mr.start();
+      setRec(mr);
+      // säkerhetsgräns: max 30 sekunder
+      setTimeout(() => mr.state === 'recording' && mr.stop(), 30000);
+    } catch {
+      setErr('Mikrofonen kunde inte startas. Tillåt mikrofonen i webbläsaren.');
+    }
+  };
+  const stop = () => {
+    rec?.state === 'recording' && rec.stop();
+    setRec(null);
+  };
+  return (
+    <>
+      <button type="button" className={`btn chat__mic ${rec ? 'is-rec' : ''} ${speaking ? 'is-speaking' : ''}`} disabled={disabled && !rec}
+        onClick={rec ? stop : start} aria-label={rec ? 'Sluta prata och skicka' : 'Prata med personalen'} title={rec ? 'Tryck för att skicka' : 'Prata (röst)'}>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+          {rec ? <rect x="7" y="7" width="10" height="10" fill="currentColor" /> : <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3" />}
+        </svg>
+      </button>
+      {err && <p className="chat__micerr" role="alert">{err}</p>}
+    </>
+  );
+}
+
 export default function StaffChat() {
   const chat = useStore((s) => s.chat);
   const close = useStore((s) => s.closeChat);
@@ -82,6 +125,7 @@ export default function StaffChat() {
         )}
       </div>
       <form className="chat__form" onSubmit={submit}>
+        <MicButton disabled={chat.pending} />
         <input value={text} onChange={(e) => setText(e.target.value)} placeholder={`Fråga ${staff?.name} om kläder och produkter …`} maxLength={1000} aria-label="Meddelande" />
         <button className="btn btn--primary" disabled={chat.pending || !text.trim()}>Skicka</button>
       </form>

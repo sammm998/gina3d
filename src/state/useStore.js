@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { STAFF } from '../config/staff.js';
+import { FITTING_BOOTHS } from '../config/fixtures.js';
 
 const WISHLIST_KEY = 'gt3d.wishlist.v1';
 const CART_KEY = 'gt3d.cart.v1';
@@ -108,7 +109,8 @@ export const useStore = create((set, get) => ({
   fittingNavId: 0,
   goToFittingRoom: () => {
     // in i första provhytten, vänd mot spegeln
-    const id = get().navigateTo(-6.3, -6.65, [-6.3, -7.5], 0);
+    const b = FITTING_BOOTHS[0].stand;
+    const id = get().navigateTo(b.x, b.z, [b.x, b.z - 1], 0);
     set({ fittingNavId: id, cartOpen: false, selectedId: null });
   },
 
@@ -139,13 +141,13 @@ export const useStore = create((set, get) => ({
   openChat: (staffId) => {
     const cur = get().chat;
     if (cur.staffId === staffId && cur.items.length) {
-      set({ chat: { ...cur, open: true }, pointerLocked: false, selectedId: null, cartOpen: false, wishlistOpen: false });
+      set({ chat: { ...cur, open: true }, helpOffer: null, pointerLocked: false, selectedId: null, cartOpen: false, wishlistOpen: false });
       return;
     }
     const staff = STAFF.find((s) => s.id === staffId) ?? STAFF[0];
     set({
       chat: { open: true, staffId: staff.id, items: [{ role: 'staff', text: staff.greeting, cards: [] }], history: [], pending: false, mode: null },
-      pointerLocked: false, selectedId: null, cartOpen: false, wishlistOpen: false,
+      helpOffer: null, pointerLocked: false, selectedId: null, cartOpen: false, wishlistOpen: false,
     });
     if (document.pointerLockElement) document.exitPointerLock();
   },
@@ -186,6 +188,52 @@ export const useStore = create((set, get) => ({
       set({ chat: { ...now, pending: false, items: [...now.items, { role: 'staff', text: 'Jag når inte servern just nu – försök igen om en stund.', cards: [] }] } });
     }
   },
+
+  /** Röstsamtal: inspelat ljud -> personalen svarar med röst, text och produktkort. */
+  sendVoice: async (blob) => {
+    const c = get().chat;
+    if (c.pending || !blob?.size) return;
+    const staff = STAFF.find((s) => s.id === c.staffId) ?? STAFF[0];
+    set({ chat: { ...c, pending: true, items: [...c.items, { role: 'user', text: '🎤 …', cards: [], voice: true }] } });
+    const replaceLast = (items, text) => items.map((m, i) => (i === items.length - 1 && m.voice ? { ...m, text } : m));
+    try {
+      const b64 = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result).split(',')[1] || '');
+        r.onerror = reject;
+        r.readAsDataURL(blob);
+      });
+      const res = await fetch('/api/voice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audio: b64, mime: blob.type, staff: staff.name, voice: staff.voice, history: c.history }),
+      });
+      const data = await res.json().catch(() => ({}));
+      const now = get().chat;
+      const items = replaceLast(now.items, data.transcript ? `🎤 ${data.transcript}` : '🎤 (inspelning)');
+      const reply = res.ok ? data.reply : data.error || 'Röstsamtalet svarar inte just nu.';
+      set({
+        chat: {
+          ...now,
+          pending: false,
+          mode: res.ok ? 'ai' : now.mode,
+          history: Array.isArray(data.history) ? data.history : now.history,
+          items: [...items, { role: 'staff', text: reply, cards: data.cards ?? [] }],
+        },
+      });
+      if (data.audio) {
+        const a = new Audio(`data:audio/mpeg;base64,${data.audio}`);
+        get().setSpeaking(true);
+        a.onended = a.onerror = () => get().setSpeaking(false);
+        a.play().catch(() => get().setSpeaking(false));
+      }
+    } catch {
+      const now = get().chat;
+      set({ chat: { ...now, pending: false, items: [...replaceLast(now.items, '🎤 (inspelning)'), { role: 'staff', text: 'Jag når inte servern just nu – försök igen om en stund.', cards: [] }] } });
+    }
+  },
+  speaking: false,
+  setSpeaking: (speaking) => set({ speaking }),
 
   toast: null,
   showToast: (text) => {

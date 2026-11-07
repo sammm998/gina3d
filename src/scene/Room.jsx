@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { FLOOR_H, LEVELS, STORE, TOP_Y, ceilingHoleOf, floorHoleOf } from '../config/storeConfig.js';
+import { FLOOR_H, LAYOUT_SCALE, LEVELS, STORE, TOP_Y, ceilingHoleOf, floorHoleOf } from '../config/storeConfig.js';
 import { useStore } from '../state/useStore.js';
 import { floorTexture, glowTexture, mallFloorTexture } from './textures.js';
 import { MAT } from './materials.js';
@@ -168,7 +168,7 @@ function Ceilings() {
 
 /** Sprinklerhuvuden och ventilationsdon i taket – små detaljer som finns i alla butiker. */
 const sprinklerGeom = new THREE.CylinderGeometry(0.018, 0.026, 0.035, 10);
-const ventGeom = new THREE.BoxGeometry(0.6, 0.012, 0.6);
+const ventGeom = new THREE.BoxGeometry(0.6, 0.024, 0.6); // ovansidan går upp i taket (inga ytor i samma plan)
 const ventMat = new THREE.MeshStandardMaterial({ color: '#e6e5e1', roughness: 0.7 });
 const slotMat = new THREE.MeshStandardMaterial({ color: '#b9b8b4', roughness: 0.9 });
 const slotGeom = new THREE.BoxGeometry(0.5, 0.004, 0.018);
@@ -177,11 +177,11 @@ function CeilingDetails({ level, y }) {
   const inHole = (x, z, m = 0.5) => holes.some((V) => x > V.minX - m && x < V.maxX + m && z > V.minZ - m && z < V.maxZ + m);
   const sprinklers = useMemo(() => {
     const out = [];
-    for (let x = -11; x <= 11; x += 3.2) for (let z = -6.2; z <= 6.4; z += 3.1) if (!inHole(x, z)) out.push([x + 0.6, z + 0.4]);
+    for (let x = STORE.minX + 1.6; x <= STORE.maxX - 1.6; x += 3.4) for (let z = STORE.minZ + 1.4; z <= STORE.maxZ - 1.4; z += 3.2) if (!inHole(x, z)) out.push([x + 0.6, z + 0.4]);
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [level]);
-  const vents = useMemo(() => [[-8.2, -3.6], [-1.6, 2.8], [4.2, -3.4], [-5.0, 5.2], [7.6, 5.4]].filter(([x, z]) => !inHole(x, z, 0.8)), [level]); // eslint-disable-line react-hooks/exhaustive-deps
+  const vents = useMemo(() => [[-9.8, -4.3], [-1.9, 3.4], [5.0, -4.1], [-6.0, 6.2], [9.1, 6.5]].filter(([x, z]) => !inHole(x, z, 0.8)), [level]); // eslint-disable-line react-hooks/exhaustive-deps
   const sref = useRef();
   useLayoutEffect(() => {
     const m = new THREE.Matrix4();
@@ -192,10 +192,10 @@ function CeilingDetails({ level, y }) {
     <group>
       <instancedMesh ref={sref} args={[sprinklerGeom, MAT.chrome, sprinklers.length]} raycast={() => null} />
       {vents.map(([x, z]) => (
-        <group key={`${x}${z}`} position={[x, y - 0.007, z]}>
+        <group key={`${x}${z}`} position={[x, y - 0.02, z]}>
           <mesh geometry={ventGeom} material={ventMat} raycast={() => null} />
           {[-0.2, -0.1, 0, 0.1, 0.2].map((dz) => (
-            <mesh key={dz} geometry={slotGeom} material={slotMat} position={[0, -0.007, dz]} raycast={() => null} />
+            <mesh key={dz} geometry={slotGeom} material={slotMat} position={[0, -0.0145, dz]} raycast={() => null} />
           ))}
         </group>
       ))}
@@ -215,7 +215,7 @@ function TrackLights() {
       [-11.5, -6.2, 5.2, 2 * FLOOR_H + H],
       [-11.5, 5.6, 11.5, 2 * FLOOR_H + H],
       [-11.5, -1.0, 5.2, 2 * FLOOR_H + H],
-    ],
+    ].map(([x0, z, x1, y]) => [x0 * LAYOUT_SCALE, z * LAYOUT_SCALE, x1 * LAYOUT_SCALE, y]),
     []
   );
   const heads = useMemo(() => {

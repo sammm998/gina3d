@@ -1,3 +1,4 @@
+import { LAYOUT_SCALE } from './storeConfig.js';
 /**
  * Butikens zoner.
  *
@@ -133,4 +134,12 @@ export function zonesOnLevel(level) {
 
 export function zoneById(id) {
   return ZONES.find((z) => z.id === id);
+}
+
+// Layouten är skriven för 25 × 15 m – skala ut till butikens verkliga storlek.
+for (const z of ZONES) {
+  z.rect = z.rect.map((v) => v * LAYOUT_SCALE);
+  if (z.viewpoint) {
+    z.viewpoint = { ...z.viewpoint, x: z.viewpoint.x * LAYOUT_SCALE, z: z.viewpoint.z * LAYOUT_SCALE, lookAt: z.viewpoint.lookAt?.map((v) => v * LAYOUT_SCALE) };
+  }
 }

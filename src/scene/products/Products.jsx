@@ -273,7 +273,7 @@ function groupByProduct(items) {
 const SWATCH_CROP = { upper: [0.38, 0.3, 0.24, 0.22], outer: [0.36, 0.32, 0.28, 0.24], lower: [0.3, 0.3, 0.16, 0.24], skirt: [0.36, 0.2, 0.28, 0.24], full: [0.38, 0.38, 0.24, 0.22] };
 
 /** Instansierade plagg med tygmaterial, per-instansfärg, highlight och klick. */
-function FabricInstances({ product, geom, items, matrixOf, repeat }) {
+function FabricInstances({ product, geom, items, matrixOf, repeat, solid = false }) {
   const ref = useRef();
   const kind = fabricKind(product);
   const ids = useMemo(() => items.map((i) => i.p.id), [items]);
@@ -290,6 +290,11 @@ function FabricInstances({ product, geom, items, matrixOf, repeat }) {
     let alive = true;
     productSwatch(url, SWATCH_CROP[garmentClass(product)] ?? SWATCH_CROP.upper).then(({ texture, color }) => {
       if (!alive) return;
+      // vikta plagg: bara tygets färg (bitar av fotot ser inte ut som tyg i en trave)
+      if (solid) {
+        if (color) setSwatchColor(color);
+        return;
+      }
       const t = texture.clone();
       t.needsUpdate = true;
       t.repeat.set(2, 2);
@@ -386,12 +391,10 @@ function FoldStacks({ entries }) {
   return (
     <group>
       {Object.entries(groups).map(([id, list]) => (
-        <FabricInstances key={id} product={list[0].p} geom={foldGeom} items={list} repeat={fabricKind(list[0].p) === 'denim' ? 16 : 10}
+        <FabricInstances key={id} product={list[0].p} geom={foldGeom} items={list} repeat={fabricKind(list[0].p) === 'denim' ? 16 : 10} solid
           matrixOf={(it) => compose(it.x, it.y, it.z, it.ry, it.w, it.h, it.d)} />
       ))}
-      {Object.entries(tops).map(([id, list]) => (
-        <FoldTops key={id} productId={id} list={list} />
-      ))}
+
     </group>
   );
 }

@@ -7,6 +7,8 @@ import { useStore } from '../../state/useStore.js';
 import { useLazyTexture } from '../useLazyTexture.js';
 import { DEFAULT_ANCHORS } from '../../tryon/overlay.js';
 import { tryOnType } from '../../data/productMeta.js';
+import { prepareGarment } from '../../tryon/garmentPrep.js';
+import { inflatedGeometry, inflatedMaterials } from '../products/inflate.js';
 
 /**
  * Vit, ansiktslös skyltdocka i low poly, byggd av lathe-geometrier.
@@ -80,6 +82,54 @@ function projectedGeometry(base, offset, scale, A, B) {
   }
   g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   return g;
+}
+
+/**
+ * Det riktiga plagget på dockan: den frilagda produktbilden (rensad, galgen
+ * borttagen) blir ett "uppblåst" 3D-plagg i rätt storlek, placerat på dockans
+ * axlar resp. höfter – samma plagg som visas när man klickar på det.
+ */
+const WORN = {
+  upper: { width: 0.37, y: 1.43, z: 0.035, depth: 0.1 },
+  outer: { width: 0.41, y: 1.445, z: 0.05, depth: 0.12 },
+  full: { width: 0.37, y: 1.43, z: 0.035, depth: 0.1 },
+  lower: { width: 0.19, y: 0.9, z: 0.03, depth: 0.09 },
+  skirt: { width: 0.19, y: 0.9, z: 0.035, depth: 0.1 },
+};
+function WornGarment({ piece, product, ev }) {
+  const tex = useLazyTexture(product.tryOnImage, [0, 1, 0], 1e6);
+  const hl = useIsHighlighted(product.id);
+  const kind = piece.type === 'skirt' ? 'lower' : piece.type === 'outer' ? 'upper' : piece.type;
+  const prep = useMemo(() => {
+    if (!tex?.image) return null;
+    const pr = prepareGarment(tex.image, kind === 'full' ? 'full' : kind);
+    if (!pr.ok) return null;
+    pr.canvas.src ??= `${product.tryOnImage}#worn-${kind}`; // nyckel för geometricachen
+    return pr;
+  }, [tex, kind, product.tryOnImage]);
+  const geom = useMemo(() => (prep ? inflatedGeometry(prep.canvas, { cols: 44, back: 0.9 }) : null), [prep]);
+  const mats = useMemo(() => {
+    if (!prep) return null;
+    const t = new THREE.CanvasTexture(prep.canvas);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 8;
+    return inflatedMaterials(t);
+  }, [prep]);
+  useEffect(() => {
+    if (!mats) return;
+    mats[0].emissive.set(hl ? '#ffffff' : '#000000');
+    mats[0].emissiveIntensity = hl ? 0.12 : 0;
+  }, [hl, mats]);
+  if (!prep || !geom || !mats) return null;
+  const W = WORN[piece.type] ?? WORN.upper;
+  const { canvas: c, anchors: A } = prep;
+  const pxW = Math.max(1, (A.right[0] - A.left[0]) * c.width);
+  const H = (W.width / pxW) * c.height; // höjd i meter för hela bilden
+  const cx = ((A.left[0] + A.right[0]) / 2 - 0.5) * (c.width / c.height) * H;
+  const y = W.y - (0.5 - A.left[1]) * H;
+  return (
+    <mesh geometry={geom} material={mats} position={[-cx, y, W.z]} scale={[H, H, W.depth]} {...ev} userData={{ productId: product.id }} />
+  );
 }
 
 function ProjectedGarment({ piece, product, ev, sleeveMat }) {
@@ -184,7 +234,7 @@ function Garment({ piece, eventsFor }) {
   }, [hl, m]);
   const ev = eventsFor ? eventsFor(piece.productId) : {};
   const ud = { productId: piece.productId };
-  if (product?.tryOnImage) return <ProjectedGarment piece={piece} product={product} ev={ev} sleeveMat={m} />;
+  if (product?.tryOnImage) return <WornGarment piece={piece} product={product} ev={ev} />;
   switch (piece.type) {
     case 'upper':
     case 'outer': {
