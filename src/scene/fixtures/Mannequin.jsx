@@ -138,14 +138,28 @@ function ProjectedGarment({ piece, product, ev, sleeveMat }) {
   const hl = useIsHighlighted(product.id);
   const B = BODY[piece.type] ?? BODY.upper;
   const t = tryOnType(product) || 'upper';
-  const A = product.tryOnAnchors || DEFAULT_ANCHORS[t];
+  // Rensad plaggbild (galgen och bakgrundsrester borta) med ankare ur plaggets form
+  const kind = piece.type === 'skirt' ? 'lower' : piece.type === 'outer' ? 'upper' : piece.type;
+  const prep = useMemo(() => {
+    if (!tex?.image) return null;
+    const pr = prepareGarment(tex.image, kind);
+    return pr.ok ? pr : null;
+  }, [tex, kind]);
+  const A = prep?.anchors || product.tryOnAnchors || DEFAULT_ANCHORS[t];
   const mat = useMemo(() => {
     if (!tex) return null;
-    const tx = tex.clone();
-    tx.needsUpdate = true;
+    let tx;
+    if (prep) {
+      tx = new THREE.CanvasTexture(prep.canvas);
+      tx.colorSpace = THREE.SRGBColorSpace;
+      tx.anisotropy = 8;
+    } else {
+      tx = tex.clone();
+      tx.needsUpdate = true;
+    }
     tx.wrapS = tx.wrapT = THREE.ClampToEdgeWrapping;
-    return new THREE.MeshStandardMaterial({ map: tx, alphaTest: 0.35, side: THREE.DoubleSide, roughness: 0.85 });
-  }, [tex]);
+    return new THREE.MeshStandardMaterial({ map: tx, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.85 });
+  }, [tex, prep]);
   useEffect(() => {
     if (!mat) return;
     mat.emissive.set(hl ? '#ffffff' : '#000000');
@@ -235,7 +249,8 @@ function Garment({ piece, eventsFor }) {
   }, [hl, m]);
   const ev = eventsFor ? eventsFor(piece.productId) : {};
   const ud = { productId: piece.productId };
-  if (product?.tryOnImage) return <WornGarment piece={piece} product={product} ev={ev} />;
+  // plagget som ett skal runt dockans kropp med produktbilden projicerad fram och bak
+  if (product?.tryOnImage) return <ProjectedGarment piece={piece} product={product} ev={ev} sleeveMat={m} />;
   switch (piece.type) {
     case 'upper':
     case 'outer': {
