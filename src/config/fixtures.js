@@ -12,7 +12,8 @@
  *
  * Rotation: 0 = möbelns framsida mot +z (mot entrén), PI/2 = mot +x, -PI/2 = mot −x, PI = mot −z.
  */
-import { FLOOR_H, LAYOUT_BASE, LAYOUT_SCALE } from './storeConfig.js';
+import { ESCALATORS, FLOOR_H, LAYOUT_BASE, LAYOUT_SCALE, STORE as REAL } from './storeConfig.js';
+import { ZONES } from './zones.js';
 
 // Layouten nedan är skriven i de ursprungliga måtten (25 × 15 m) och flyttas sist ut
 // i proportion till butikens verkliga storlek (möblernas egna mått ändras inte).
@@ -493,7 +494,75 @@ function placeScaled(f) {
   };
 }
 
-export const FIXTURES = LAYOUT.map(placeScaled);
+const SCALED = LAYOUT.map(placeScaled);
+
+/**
+ * Fyller ut de större våningarna: fler väggsektioner längs väggarna och fler
+ * ställningar, bord och gondoler på golvet – bara där det är fritt (inga
+ * gångar, rulltrappor, entrén eller kassan blockeras).
+ */
+function fillOut(existing) {
+  const out = [];
+  const R = REAL;
+  for (const L of [0, 1, 2]) {
+    const own = [...existing, ...out].filter((f) => (f.level || 0) === L);
+    const rects = [];
+    for (const f of own) for (const c of f.colliders || []) {
+      if (c.rect) rects.push(c.rect);
+      if (c.circle) rects.push([c.circle[0] - c.circle[2], c.circle[1] - c.circle[2], c.circle[0] + c.circle[2], c.circle[1] + c.circle[2]]);
+    }
+    // rulltrappor (start, slut och öppningen) + entréns gång + kassan
+    for (const e of ESCALATORS) {
+      if (e.fromLevel === L) rects.push([e.minX - 1.8, e.zEntry - 3, e.maxX + 1.8, e.zExit + 0.5]);
+      if (e.fromLevel === L - 1) rects.push([e.minX - 1.8, -3.3 - 1.5, e.maxX + 1.8, e.zExit + 3]);
+    }
+    if (L === 0) {
+      rects.push([-4, R.maxZ - 7, 4, R.maxZ + 1]);
+      rects.push([-14, R.minZ, 2, R.minZ + 4.5]); // kassa och provrum
+    }
+    const free = (r, m = 0.6) => !rects.some((q) => r[0] < q[2] + m && r[2] > q[0] - m && r[1] < q[3] + m && r[3] > q[1] - m);
+    const zoneAt = (x, z) => ZONES.find((zn) => (zn.level || 0) === L && !['escalator', 'checkout'].includes(zn.id) && x >= zn.rect[0] && x <= zn.rect[2] && z >= zn.rect[1] && z <= zn.rect[3])?.id;
+    const add = (f) => {
+      if (!f.zone) return;
+      onLevel(L, [f]);
+      out.push(f);
+      for (const c of f.colliders) if (c.rect) rects.push(c.rect);
+    };
+    let n = 0;
+    // väggar: bak, vänster, höger (2,6 m sektioner)
+    for (let x = R.minX + 1.6; x <= R.maxX - 1.6; x += 2.75) {
+      const r = [x - 1.35, R.minZ, x + 1.35, R.minZ + 0.7];
+      if (free(r, 0.15)) add(wallBay(`fill-b${L}-${n++}`, zoneAt(x, R.minZ + 2), x, R.minZ, 0));
+    }
+    for (const side of [-1, 1]) {
+      const wx = side < 0 ? R.minX : R.maxX;
+      for (let z = R.minZ + 1.6; z <= R.maxZ - 2.2; z += 2.75) {
+        const r = side < 0 ? [wx, z - 1.35, wx + 0.7, z + 1.35] : [wx - 0.7, z - 1.35, wx, z + 1.35];
+        if (free(r, 0.15)) add(wallBay(`fill-s${L}-${n++}`, zoneAt(wx - side * 2, z), wx, z, side < 0 ? Math.PI / 2 : -Math.PI / 2));
+      }
+    }
+    // golvet: ställningar, bord och gondoler i ett glest rutnät
+    const types = ['rail', 'gondola', 'table', 'rail'];
+    let k = L;
+    for (let z = R.minZ + 3.2; z <= R.maxZ - 3.2; z += 2.9) {
+      for (let x = R.minX + 3.4; x <= R.maxX - 3.4; x += 3.5) {
+        const t = types[k % types.length];
+        const half = t === 'rail' ? [1.0, 0.45] : t === 'table' ? [1.0, 0.55] : [1.0, 0.5];
+        const r = [x - half[0], z - half[1], x + half[0], z + half[1]];
+        if (!free(r, 0.95)) continue;
+        const zone = zoneAt(x, z);
+        if (!zone) continue;
+        k++;
+        if (t === 'rail') add(freeRail(`fill-r${L}-${n++}`, zone, x, z, 0, { length: 1.7 }));
+        else if (t === 'table') add(table(`fill-t${L}-${n++}`, zone, x, z, 0, { w: 1.7 }));
+        else add(gondola(`fill-g${L}-${n++}`, zone, x, z, 0));
+      }
+    }
+  }
+  return out;
+}
+
+export const FIXTURES = [...SCALED, ...fillOut(SCALED)];
 
 /** Provhytternas insida (x0, z0, x1, z1) på entréplan – att kliva in öppnar provningen. */
 const fittingDelta = FIXTURES.find((f) => f.id === 'fitting').delta;
