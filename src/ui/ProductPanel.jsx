@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { formatPrice, t } from '../i18n/index.js';
 import { useStore } from '../state/useStore.js';
 import { canTryOn, colorHex, colorName } from '../data/productMeta.js';
+import { startCheckout } from './Cart.jsx';
 import { zoneById, zoneForCategory } from '../config/zones.js';
 
 const CATEGORY_LABEL = {
@@ -83,6 +84,7 @@ export default function ProductPanel() {
   const [needSize, setNeedSize] = useState(false);
   const [color, setColor] = useState(0);
   const [size, setSize] = useState(null);
+  const [buying, setBuying] = useState(false);
 
   useEffect(() => {
     setColor(0);
@@ -173,9 +175,18 @@ export default function ProductPanel() {
             {t('product.tryOn')}
           </button>
           {!tryable && <p className="panel__note">{t('product.noTryOn')}</p>}
-          <a className="btn btn--block" href={product.productUrl} target="_blank" rel="noopener noreferrer">
-            {t('product.buy')} ↗
-          </a>
+          <button className="btn btn--block" disabled={buying} onClick={async () => {
+            if (needSize && !size) return;
+            setBuying(true);
+            try {
+              await startCheckout([{ id: product.id, size: size ?? product.sizes?.[0] ?? null, color: product.colors?.[color] ?? null }]);
+            } catch (e) {
+              useStore.getState().showToast(e.message);
+              setBuying(false);
+            }
+          }}>
+            {buying ? 'Öppnar betalningen …' : 'Köp nu'}
+          </button>
           <button className="btn btn--ghost-plain btn--block" onClick={showInStore}>{t('product.showInStore')}</button>
         </div>
       </div>

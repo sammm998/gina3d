@@ -5,6 +5,7 @@ import { useStore } from '../../state/useStore.js';
 import { accessoryKind, fabricKind, garmentClass, hangLength, primaryHex } from '../../data/productMeta.js';
 import { fabricMaterial, productSwatch } from '../textures.js';
 import { inflatedGeometry, inflatedMaterials } from './inflate.js';
+import { prepareGarment } from '../../tryon/garmentPrep.js';
 import { requestTexture, useLazyTexture } from '../useLazyTexture.js';
 import { productEvents, useIsHighlighted } from './events.js';
 import { MAT } from '../materials.js';
@@ -95,9 +96,19 @@ function FaceOut({ entry }) {
   const topOffset = isLower ? 0.02 : 0.05 * L; // halsöppningen sitter en bit ner i bilden
   const ev = useMemo(() => productEvents(p.id), [p.id]);
   // 3D-plagg ur den frilagda bilden (volym, fram- och baksida)
-  const geom = useMemo(() => (tex?.image && p.tryOnImage ? inflatedGeometry(tex.image) : null), [tex, p.tryOnImage]);
-  const mats = useMemo(() => sharedMaterials(tex, 0), [tex]);
-  const backMats = useMemo(() => sharedMaterials(tex, 1), [tex]);
+  // rensad produktbild (bakgrundsrester och galge borta); bilder som inte går att rensa visas inte
+  const prep = useMemo(() => {
+    if (!tex?.image || !p.tryOnImage) return null;
+    const k = garmentClass(p);
+    const pr = prepareGarment(tex.image, k === 'full' ? 'full' : k === 'lower' || k === 'skirt' ? 'lower' : 'upper');
+    if (!pr.ok) return null;
+    pr.canvas.src ??= `${p.tryOnImage}#faceout`;
+    pr.tex ??= Object.assign(new THREE.CanvasTexture(pr.canvas), { colorSpace: THREE.SRGBColorSpace, anisotropy: 8 });
+    return pr;
+  }, [tex, p]);
+  const geom = useMemo(() => (prep ? inflatedGeometry(prep.canvas) : null), [prep]);
+  const mats = useMemo(() => (prep ? sharedMaterials(prep.tex, 0) : null), [prep]);
+  const backMats = useMemo(() => (prep ? sharedMaterials(prep.tex, 1) : null), [prep]);
   useEffect(() => {
     if (!mats) return;
     mats[0].emissive.set(hl ? '#ffffff' : '#000000');

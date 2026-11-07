@@ -116,7 +116,12 @@ function freeRail(id, zone, x, z, rot, opts = {}) {
   const f = { id, type: 'freeRail', zone, x, z, rot, length: 1.6, railY: 1.5, ...opts };
   f.colliders = [{ rect: rectFor(f, f.length + 0.2, 0.62) }];
   f.map = { rect: rectFor(f, f.length + 0.1, 0.5) };
-  f.slots = [{ kind: 'side', count: Math.round((f.length - 0.15) / 0.068), length: f.length - 0.15, pos: [x, f.railY, z], rot }];
+  // sidohängda plagg + ett plagg framifrån i ena änden (vänt utåt, som i butik)
+  const side = f.length - 0.6;
+  const [sx, sz] = toWorld(f, 0.25, 0);
+  f.slots = [{ kind: 'side', count: Math.round(side / 0.068), length: side, pos: [sx, f.railY, sz], rot }];
+  const [ex, ez] = toWorld(f, -f.length / 2 + 0.05, 0);
+  f.slots.push({ kind: 'faceout', pos: [ex, f.railY - 0.06, ez], rot: rot - Math.PI / 2 });
   return f;
 }
 

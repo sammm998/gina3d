@@ -103,17 +103,9 @@ export default function Cart() {
                 </>
               )}
             </div>
-            <div className="panel__group">
-              <p className="panel__label">Produktsidor på ginatricot.com</p>
-              {items.map((c) => (
-                <a key={c.key} className="link-row" href={c.p.productUrl} target="_blank" rel="noopener noreferrer">
-                  {c.p.name}{c.size ? ` (${c.size})` : ''} ↗
-                </a>
-              ))}
-            </div>
           </>
         )}
-        <p className="panel__note">Betalningen sker säkert via Stripe – kortuppgifterna hanteras aldrig av den här sidan. Priserna hämtas från ginatricot.com.</p>
+        <p className="panel__note">Betalningen sker säkert via Stripe – kortuppgifterna hanteras aldrig av den här sidan.</p>
       </div>
     </aside>
   );

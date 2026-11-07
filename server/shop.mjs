@@ -17,6 +17,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseProduct } from '../scripts/import-ginatricot.mjs';
+import { parseQuery } from './chat.mjs';
 
 const UA = 'Mozilla/5.0 (compatible; gina3d-virtual-store/1.0)';
 let store = [];
@@ -133,7 +134,7 @@ function persist() {
 const norm = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '');
 const view = (c) => {
   const d = details.get(c.id);
-  return { id: c.id, name: d?.name || c.name, category: c.category, url: c.url, inStore: c.inStore, price: d?.price ?? null, currency: d?.currency ?? 'SEK', image: d?.image ?? null, sizes: d?.sizes ?? null, colors: d?.colors ?? null };
+  return { id: c.id, name: d?.name || c.name, category: c.category, url: c.url, inStore: c.inStore, price: d?.price ?? null, currency: d?.currency ?? 'SEK', image: d?.image ?? null, images: d?.images ?? (d?.image ? [d.image] : []), sizes: d?.sizes ?? null, colors: d?.colors ?? null, material: d?.material ?? null };
 };
 
 function send(res, status, body) {
@@ -169,6 +170,7 @@ export async function handleShop(req, res) {
         withDetails: details.size, all: catalog.length,
       });
     }
+    if (url.pathname === '/api/catalog/ai' && req.method === 'GET') return await aiSearch(res, String(url.searchParams.get('q') || '').slice(0, 300));
     if (url.pathname === '/api/catalog/details' && req.method === 'GET') {
       const ids = (url.searchParams.get('ids') || '').split(',').filter(Boolean).slice(0, 24);
       const out = await Promise.all(ids.map(async (id) => {
@@ -269,4 +271,55 @@ async function status(res, id) {
   } catch {
     return send(res, 502, { error: 'Kunde inte läsa betalningen.' });
   }
+}
+
+// ------------------------------------------------------------------ AI-sökning
+const CAT_SV = { trousers: 'byxor', jeans: 'jeans', tops: 'toppar', knitwear: 'tröjor och stickat', dresses: 'klänningar', skirts: 'kjolar', outerwear: 'ytterkläder', bags: 'väskor', shoes: 'skor', missy: 'Miss Y' };
+
+/** Tolkar en fri beskrivning ("något svart och festligt till nyår under 400 kr") med OpenAI. */
+async function interpret(q) {
+  if (!process.env.OPENAI_API_KEY) return null;
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(15000),
+      body: JSON.stringify({
+        model: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
+        temperature: 0,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: 'Du tolkar en kunds beskrivning av kläder hos Gina Tricot. Svara med JSON: {"categories": [...] (av: tops, knitwear, trousers, jeans, dresses, skirts, outerwear, bags, shoes, missy), "keywords": [engelska ord som kan finnas i produktnamn, t.ex. "satin","maxi","black","wide","tank"], "max_price": tal eller 0, "summary": kort svensk mening om vad du letar efter}.' },
+          { role: 'user', content: q },
+        ],
+      }),
+    });
+    const j = await res.json();
+    return JSON.parse(j.choices?.[0]?.message?.content || 'null');
+  } catch {
+    return null;
+  }
+}
+
+async function aiSearch(res, q) {
+  if (!q.trim()) return send(res, 400, { error: 'Beskriv vad du letar efter.' });
+  const ai = await interpret(q);
+  const pq = parseQuery(q);
+  const cats = (ai?.categories?.length ? ai.categories : pq.categories).filter((c) => CATEGORIES.includes(c));
+  const terms = [...new Set([...(ai?.keywords || []).map((k) => norm(k)), ...pq.typeTerms, ...pq.nameTerms, ...pq.freeTerms])].filter((t) => t.length > 1);
+  const maxPrice = Number(ai?.max_price) || Number((q.match(/(?:under|max|högst)\s*(\d{2,5})/i) || [])[1]) || 0;
+  const scored = [];
+  for (const c of catalog) {
+    if (cats.length && !cats.includes(c.category)) continue;
+    const d = details.get(c.id);
+    if (maxPrice && d?.price && d.price > maxPrice) continue;
+    const words = norm(`${d?.name || c.name}`).split(/[^a-z0-9]+/);
+    const hits = terms.filter((t) => words.some((w) => w === t || (t.length >= 4 && w.startsWith(t)))).length;
+    if (!hits && !cats.length) continue;
+    scored.push({ c, s: hits * 2 + (d?.image ? 0.5 : 0) + (c.inStore ? 0.3 : 0) });
+  }
+  scored.sort((a, b) => b.s - a.s);
+  const items = scored.slice(0, 24).map((x) => view(x.c));
+  const summary = ai?.summary || (cats.length ? `Förslag bland ${cats.map((c) => CAT_SV[c] || c).join(' och ')}${terms.length ? ` som matchar ”${terms.slice(0, 4).join(', ')}”` : ''}.` : `Förslag som matchar ”${q}”.`);
+  return send(res, 200, { summary, items, ai: !!ai });
 }

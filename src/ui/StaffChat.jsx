@@ -26,13 +26,15 @@ function Card({ c }) {
       {image ? <img src={image} alt="" loading="lazy" decoding="async" /> : <div className="chat-card__ph" />}
       <div className="chat-card__body">
         <strong>{c.name}</strong>
-        <span>{c.price ? formatPrice(c.price, c.currency) : 'Se pris på ginatricot.com'}</span>
+        <span>{c.price ? formatPrice(c.price, c.currency) : 'Pris visas i katalogen'}</span>
         <span className="chat-card__where">{inStore ? `I butiken · ${LEVELS[zone?.level || 0].short}${zone ? ` · ${zone.name}` : ''}` : 'Finns i webbutiken'}</span>
         <div className="chat-card__actions">
           {inStore && <button className="chip" onClick={go}>Visa i butiken</button>}
           {inStore && <button className="chip" onClick={add}>Lägg i korgen</button>}
           {inStore && <button className="chip" onClick={() => useStore.getState().select(c.id)}>Detaljer</button>}
-          <a className="chip" href={c.url} target="_blank" rel="noopener noreferrer">ginatricot.com ↗</a>
+          {!inStore && c.price != null && (
+            <button className="chip" onClick={() => { useStore.getState().addToCart(c.id, null, null, { name: c.name, price: c.price, currency: c.currency, image: c.image, url: c.url }); useStore.getState().setCartOpen(true); }}>Lägg i korgen</button>
+          )}
         </div>
       </div>
     </div>
